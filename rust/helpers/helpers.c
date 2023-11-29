@@ -27,6 +27,7 @@
 #include "rbtree.c"
 #include "rcu.c"
 #include "refcount.c"
+#include "regmap.c"
 #include "security.c"
 #include "signal.c"
 #include "slab.c"

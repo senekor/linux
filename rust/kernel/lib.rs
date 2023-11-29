@@ -113,6 +113,8 @@ pub mod platform;
 pub mod prelude;
 pub mod print;
 pub mod rbtree;
+#[cfg(CONFIG_REGMAP)]
+pub mod regmap;
 pub mod regulator;
 pub mod revocable;
 pub mod security;

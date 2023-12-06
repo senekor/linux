@@ -2,12 +2,14 @@
 
 //! SoC Regulators
 
+pub mod driver;
+
 use crate::{
     bindings,
     error::{code::*, Error, Result},
 };
 
-/// Regulators operating modes
+/// [`driver::Device`] operating modes
 #[derive(Copy, Clone)]
 #[repr(u32)]
 pub enum Mode {

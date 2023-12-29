@@ -39,6 +39,8 @@ pub mod error;
 #[cfg(CONFIG_RUST_FW_LOADER_ABSTRACTIONS)]
 pub mod firmware;
 pub mod fs;
+#[cfg(CONFIG_GPIOLIB)]
+pub mod gpio;
 pub mod init;
 pub mod ioctl;
 pub mod jump_label;

@@ -1,0 +1,51 @@
+# SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/regulator/onnn,ncv6336.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Onsemi NCV6336 Buck converter
+
+maintainers:
+  - Fabien Parent <fabien.parent@linaro.org>
+
+description:
+  The NCV6336 is an I2C programmable BUCK (step-down) converter.
+  It is designed for mobile power applications.
+
+properties:
+  compatible:
+    const: onnn,ncv6336
+
+  reg:
+    maxItems: 1
+
+  buck:
+    description: buck regulator description
+    type: object
+    $ref: regulator.yaml#
+    unevaluatedProperties: false
+
+required:
+  - compatible
+  - reg
+  - buck
+
+additionalProperties: false
+
+examples:
+  - |
+    i2c {
+        #address-cells = <1>;
+        #size-cells = <0>;
+
+        regulator@1c {
+            compatible = "onnn,ncv6336";
+            reg = <0x1c>;
+
+            buck {
+                regulator-name = "ncv6336,buck";
+            };
+        };
+    };
+...

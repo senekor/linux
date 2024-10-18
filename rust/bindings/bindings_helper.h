@@ -27,6 +27,7 @@
 #include <linux/pid_namespace.h>
 #include <linux/platform_device.h>
 #include <linux/poll.h>
+#include <linux/property.h>
 #include <linux/refcount.h>
 #include <linux/regmap.h>
 #include <linux/regulator/consumer.h>

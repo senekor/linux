@@ -29,7 +29,7 @@ macro_rules! bit {
 macro_rules! genmask {
     ($h:expr, $l:expr) => {{
         const _: () = {
-            assert!($h >= $l);
+            kernel::build_assert!($h >= $l);
         };
         ((!0u64 - (1u64 << $l) + 1) & (!0u64 >> (64 - 1 - $h)))
     }};

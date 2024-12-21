@@ -1,0 +1,73 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Definitions for IMX219 camera module on VC I2C bus
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/gpio/gpio.h>
+
+/{
+	compatible = "brcm,bcm2835";
+
+	fragment@0 {
+		target = <&i2c_csi_dsi>;
+		__overlay__ {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "okay";
+
+			gpio_expander: gpio@38 {
+				compatible = "nxp,pca9534";
+				reg = <0x38>;
+				gpio-controller;
+				#gpio-cells = <2>;
+			};
+
+			fpdlink: ds90ub954@30 {
+				compatible = "ti,ds90ub954";
+				reg = <0x30>;
+				status = "okay";
+				csi-lane-count = <2>; 				//default: 4
+				csi-lane-speed = <1600>; 			//default: 1600
+
+				pdb-gpio = <&gpio_expander 0 0>;
+
+				i2c_address_s0: num-alias-pairs-s0 {list-cells = <2>;};
+
+				serializers {
+					status = "okay";
+					num-channels = <2>;
+					#address-cells = <1>;
+					#size-cells = <0>;
+
+					serializer@0 {
+						status = "okay";
+						rx-channel=<1>; 			//default: 0
+						i2c-address=<0x18>;			//default: 0x18
+						csi-lane-count = <2>; 		//default: 4
+
+						gpio0-output-enable = <1>;	//default: 0
+
+						/* possible gpio configurations :
+						*	- 0x0 (0b0000): connect to GPIO0 of deserializer
+						*	- 0x1 (0b0001): connect to GPIO1 of deserializer
+						*	- 0x2 (0b0010): connect to GPIO2 of deserializer
+						*	- 0x3 (0b0011): connect to GPIO3 of deserializer
+						*	- 0x4 (0b0100): connect to GPIO4 of deserializer
+						*	- 0x5 (0b0101): connect to GPIO5 of deserializer
+						*	- 0x6 (0b0110): connect to GPIO6 of deserializer
+						*	- 0x8 (0b1000): Constant value of 0
+						*	- 0x9 (0b1001): Constant value of 1
+						*	- 0x10 (0b1010): FrameSync signal
+						*/
+
+						gpio0-control = <0x9>;	//default: 0x8
+
+						i2c-slave = <&i2c_address_s0 0x10 0x64>;
+						slave-alias = <&i2c_address_s0 0x10 0x64>;
+					};
+				};
+			};
+		};
+	};
+
+};

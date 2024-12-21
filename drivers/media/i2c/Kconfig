@@ -3,6 +3,7 @@
 # Multimedia Video device configuration
 #
 
+source "drivers/media/i2c/ds90ub95x/Kconfig"
 if VIDEO_DEV
 
 comment "IR I2C driver auto-selected by 'Autoselect ancillary drivers'"

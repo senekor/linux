@@ -1,1 +1,0 @@
-obj-$(CONFIG_VIDEO_DS90UB954) += ds90ub954.o

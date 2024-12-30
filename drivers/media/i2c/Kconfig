@@ -3,7 +3,6 @@
 # Multimedia Video device configuration
 #
 
-source "drivers/media/i2c/ds90ub95x/Kconfig"
 if VIDEO_DEV
 
 comment "IR I2C driver auto-selected by 'Autoselect ancillary drivers'"
@@ -1707,6 +1706,13 @@ config VIDEO_DS90UB953
 	help
 	  Device driver for the Texas Instruments DS90UB953
 	  FPD-Link III Serializer and DS90UB971 FPD-Link IV Serializer.
+
+config VIDEO_DS90UB954
+	tristate "TI FPD Link III support DS90UB954/53 support"
+	depends on I2C
+	help
+	  This configures the FPD-Link III connection and the
+	  video control
 
 config VIDEO_DS90UB960
 	tristate "TI FPD-Link III/IV Deserializers"

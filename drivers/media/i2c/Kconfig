@@ -1709,7 +1709,7 @@ config VIDEO_DS90UB953
 
 config VIDEO_DS90UB954
 	tristate "TI FPD Link III support DS90UB954/53 support"
-	depends on I2C
+	depends on I2C && RUST
 	help
 	  This configures the FPD-Link III connection and the
 	  video control

@@ -36,7 +36,21 @@ kernel::of_device_table!(
 //     // ...
 // });
 
-struct Ds90ub954;
+struct Ds90ub954 {
+    i2c_client: i2c::Client,
+    // struct regmap *regmap;
+    // struct ds90ub953_priv *ser[NUM_SERIALIZER]; //serializers
+    // int pass_gpio;
+    // int lock_gpio;
+    // int pdb_gpio;
+    // int sel_rx_port; // selected rx port
+    // int sel_ia_config; // selected ia configuration
+    // int csi_lane_count;
+    // int csi_lane_speed;
+    // int test_pattern;
+    // int num_ser; // number of serializers connected
+    // int conts_clk; // continuous clock (0: discontinuous, 1: continuous)
+}
 
 impl i2c::Driver for Ds90ub954 {
     type IdInfo = ();
@@ -45,16 +59,18 @@ impl i2c::Driver for Ds90ub954 {
     const OF_ID_TABLE: Option<of::IdTable<Self::IdInfo>> = Some(&OF_ID_TABLE);
 
     fn probe(client: &mut i2c::Client, id_info: Option<&Self::IdInfo>) -> Result<Pin<KBox<Self>>> {
-        pr_info!("Hello from i2c Ds90ub954\n");
+        pr_info!("Hello from DS90UB954 driver\n");
 
-        let drvdata = KBox::new(Self, GFP_KERNEL)?;
-
-        Ok(drvdata.into())
+        let driver_data = Self {
+            i2c_client: client.clone(),
+        };
+        let driver_data = KBox::new(driver_data, GFP_KERNEL)?;
+        Ok(driver_data.into())
     }
 }
 
 impl Drop for Ds90ub954 {
     fn drop(&mut self) {
-        pr_info!("Goodbye from i2c Ds90ub954\n");
+        pr_info!("Goodbye from DS90UB954 driver\n");
     }
 }

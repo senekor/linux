@@ -189,7 +189,7 @@ impl Device {
     pub fn property_present(&self, name: &CStr) -> bool {
         // SAFETY: `name` is non-null and null-terminated. `self.as_raw` is valid
         // because `self` is valid.
-        unsafe { bindings::device_property_present(self.as_raw(), name.as_ptr() as *const i8) }
+        unsafe { bindings::device_property_present(self.as_raw(), name.as_ptr() as *const u8) }
     }
 
     /// Returns if a firmware property `name` is true or false
@@ -197,20 +197,20 @@ impl Device {
         // TODO: replace with device_property_read_bool() which warns on non-bool properties
         // SAFETY: `name` is non-null and null-terminated. `self.as_raw` is valid
         // because `self` is valid.
-        unsafe { bindings::device_property_present(self.as_raw(), name.as_ptr() as *const i8) }
+        unsafe { bindings::device_property_present(self.as_raw(), name.as_ptr() as *const u8) }
     }
 
     /// Returns the index of matching string `match_str` for firmware string property `name`
     pub fn property_read_string(&self, name: &CStr) -> Result<CString> {
-        let mut str: *mut i8 = core::ptr::null_mut();
-        let pstr: *mut *mut i8 = &mut str;
+        let mut str: *mut u8 = core::ptr::null_mut();
+        let pstr: *mut *mut u8 = &mut str;
 
         // SAFETY: `name` is non-null and null-terminated. `self.as_raw` is
         // valid because `self` is valid.
         let ret = unsafe {
             bindings::device_property_read_string(
                 self.as_raw(),
-                name.as_ptr() as *const i8,
+                name.as_ptr() as *const u8,
                 pstr as _,
             )
         };
@@ -221,7 +221,6 @@ impl Device {
         Ok(str.try_into()?)
     }
 
-
     /// Returns the index of matching string `match_str` for firmware string property `name`
     pub fn property_match_string(&self, name: &CStr, match_str: &CStr) -> Result<usize> {
         // SAFETY: `name` and `match_str` are non-null and null-terminated. `self.as_raw` is
@@ -229,8 +228,8 @@ impl Device {
         let ret = unsafe {
             bindings::device_property_match_string(
                 self.as_raw(),
-                name.as_ptr() as *const i8,
-                match_str.as_ptr() as *const i8,
+                name.as_ptr() as *const u8,
+                match_str.as_ptr() as *const u8,
             )
         };
         to_result(ret)?;
@@ -258,7 +257,7 @@ impl Device {
         let ret = unsafe {
             bindings::device_property_read_int_array(
                 self.as_raw(),
-                name.as_ptr() as *const i8,
+                name.as_ptr() as *const u8,
                 T::SIZE.try_into().unwrap(),
                 val.as_ptr() as *mut c_void,
                 val.len(),
@@ -293,7 +292,7 @@ impl Device {
         to_result(unsafe {
             bindings::device_property_read_int_array(
                 self.as_raw(),
-                name.as_ptr() as *const i8,
+                name.as_ptr() as *const u8,
                 T::SIZE.try_into().unwrap(),
                 val.as_ptr() as *mut c_void,
                 len,
@@ -313,7 +312,7 @@ impl Device {
         let ret = unsafe {
             bindings::device_property_read_int_array(
                 self.as_raw(),
-                name.as_ptr() as *const i8,
+                name.as_ptr() as *const u8,
                 T::SIZE.try_into().unwrap(),
                 ptr::null_mut(),
                 0,

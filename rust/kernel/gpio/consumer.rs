@@ -64,6 +64,15 @@ impl Desc {
         // is safe to perform this FFI function call.
         unsafe { bindings::gpiod_set_value(self.0.as_ptr(), value) }
     }
+
+    /// Assign a GPIO's value.
+    ///
+    /// See [gpiod_set_value_cansleep](`https://docs.kernel.org/driver-api/gpio/index.html#c.gpiod_set_value_cansleep`)
+    pub fn set_value_cansleep(&mut self, value: i32) {
+        // SAFETY: Type invariants insures that `self.0` is a valid and non-null pointer, hence it
+        // is safe to perform this FFI function call.
+        unsafe { bindings::gpiod_set_value_cansleep(self.0.as_ptr(), value) }
+    }
 }
 
 impl Drop for Desc {

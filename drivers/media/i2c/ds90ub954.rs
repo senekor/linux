@@ -96,8 +96,27 @@ impl i2c::Driver for Ds90ub954 {
             test_pattern,
             continuous_clock,
         };
-        let driver_data = KBox::new(driver_data, GFP_KERNEL)?;
+        let mut driver_data = KBox::new(driver_data, GFP_KERNEL)?;
+
+        driver_data.pwr_enable();
+
+        kernel::delay::msleep(6); // wait for sensor to start
+
         Ok(driver_data.into())
+    }
+}
+
+impl Ds90ub954 {
+    fn pwr_enable(&mut self) {
+        if let Some(pdb_gpio) = &mut self.pdb_gpio {
+            pdb_gpio.set_value_cansleep(1);
+        }
+    }
+
+    fn pwr_disable(&mut self) {
+        if let Some(pdb_gpio) = &mut self.pdb_gpio {
+            pdb_gpio.set_value_cansleep(0);
+        }
     }
 }
 
@@ -378,10 +397,7 @@ impl Drop for Ds90ub954 {
         // TODO
         //
         // ds90ub953_free(priv);
-        // ds90ub954_pwr_disable(priv);
-        if let Some(mut pdb_gpio) = self.pdb_gpio.as_mut() {
-            pdb_gpio.set_value_cansleep(0);
-        }
+        self.pwr_disable();
 
         pr_info!("Goodbye from DS90UB954 driver\n");
     }

@@ -5,7 +5,7 @@
 //!
 //! Datasheet: https://www.ti.com/lit/ds/symlink/ds90ub954-q1.pdf
 
-use kernel::{c_str, gpio::consumer as gpio, i2c, of, prelude::*, regmap};
+use kernel::{c_str, gpio::consumer as gpio, i2c, of, prelude::*, regmap, str::BStr};
 
 ///  Deserializer registers
 #[allow(unused)]
@@ -27,10 +27,10 @@ mod ti954 {
     pub(crate) const OUTPUT_EN_MODE: usize = 4;
     pub(crate) const I2C_MASTER_EN: usize = 5;
 
-    pub(crate) const REG_REVISION: usize = 0x03;
+    pub(crate) const REG_REVISION: u32 = 0x03;
     pub(crate) const MASK_ID: usize = 0;
 
-    pub(crate) const REG_DEVICE_STS: usize = 0x04;
+    pub(crate) const REG_DEVICE_STS: u32 = 0x04;
     pub(crate) const LOCK: usize = 2;
     pub(crate) const PASS: usize = 3;
     pub(crate) const REFCLK_VALID: usize = 4;
@@ -64,8 +64,8 @@ mod ti954 {
     pub(crate) const REG_SCL_LOW_TIME: usize = 0x0b;
     pub(crate) const SCL_LOW_TIME: usize = 0;
 
-    pub(crate) const REG_RX_PORT_CTL: usize = 0x0c;
-    pub(crate) const PORT0_EN: usize = 0;
+    pub(crate) const REG_RX_PORT_CTL: u32 = 0x0c;
+    pub(crate) const PORT0_EN: u32 = 0;
     pub(crate) const PORT1_ER: usize = 1;
     pub(crate) const LOCK_SEL: usize = 2;
     pub(crate) const PASS_SEL: usize = 4;
@@ -85,7 +85,7 @@ mod ti954 {
     pub(crate) const GPIO5_STS: usize = 5;
     pub(crate) const GPIO6_STS: usize = 6;
 
-    pub(crate) const REG_GPIO_INPUT_CTL: usize = 0x0f;
+    pub(crate) const REG_GPIO_INPUT_CTL: u32 = 0x0f;
     pub(crate) const GPIO_INPUT_EN: usize = 0;
     pub(crate) const GPIO0_INPUT_EN: usize = 0;
     pub(crate) const GPIO1_INPUT_EN: usize = 1;
@@ -95,43 +95,43 @@ mod ti954 {
     pub(crate) const GPIO5_INPUT_EN: usize = 5;
     pub(crate) const GPIO6_INPUT_EN: usize = 6;
 
-    pub(crate) const REG_GPIO0_PIN_CTL: usize = 0x10;
+    pub(crate) const REG_GPIO0_PIN_CTL: u32 = 0x10;
     pub(crate) const GPIO0_OUT_EN: usize = 0;
     pub(crate) const GPIO0_OUT_VAL: usize = 1;
     pub(crate) const GPIO0_OUT_SRC: usize = 2;
     pub(crate) const GPIO0_OUT_SEL: usize = 5;
 
-    pub(crate) const REG_GPIO1_PIN_CTL: usize = 0x11;
+    pub(crate) const REG_GPIO1_PIN_CTL: u32 = 0x11;
     pub(crate) const GPIO1_OUT_EN: usize = 0;
     pub(crate) const GPIO1_OUT_VAL: usize = 1;
     pub(crate) const GPIO1_OUT_SRC: usize = 2;
     pub(crate) const GPIO1_OUT_SEL: usize = 5;
 
-    pub(crate) const REG_GPIO2_PIN_CTL: usize = 0x12;
+    pub(crate) const REG_GPIO2_PIN_CTL: u32 = 0x12;
     pub(crate) const GPIO2_OUT_EN: usize = 0;
     pub(crate) const GPIO2_OUT_VAL: usize = 1;
     pub(crate) const GPIO2_OUT_SRC: usize = 2;
     pub(crate) const GPIO2_OUT_SEL: usize = 5;
 
-    pub(crate) const REG_GPIO3_PIN_CTL: usize = 0x13;
+    pub(crate) const REG_GPIO3_PIN_CTL: u32 = 0x13;
     pub(crate) const GPIO3_OUT_EN: usize = 0;
     pub(crate) const GPIO3_OUT_VAL: usize = 1;
     pub(crate) const GPIO3_OUT_SRC: usize = 2;
     pub(crate) const GPIO3_OUT_SEL: usize = 5;
 
-    pub(crate) const REG_GPIO4_PIN_CTL: usize = 0x14;
+    pub(crate) const REG_GPIO4_PIN_CTL: u32 = 0x14;
     pub(crate) const GPIO4_OUT_EN: usize = 0;
     pub(crate) const GPIO4_OUT_VAL: usize = 1;
     pub(crate) const GPIO4_OUT_SRC: usize = 2;
     pub(crate) const GPIO4_OUT_SEL: usize = 5;
 
-    pub(crate) const REG_GPIO5_PIN_CTL: usize = 0x15;
+    pub(crate) const REG_GPIO5_PIN_CTL: u32 = 0x15;
     pub(crate) const GPIO5_OUT_EN: usize = 0;
     pub(crate) const GPIO5_OUT_VAL: usize = 1;
     pub(crate) const GPIO5_OUT_SRC: usize = 2;
     pub(crate) const GPIO5_OUT_SEL: usize = 5;
 
-    pub(crate) const REG_GPIO6_PIN_CTL: usize = 0x16;
+    pub(crate) const REG_GPIO6_PIN_CTL: u32 = 0x16;
     pub(crate) const GPIO6_OUT_EN: usize = 0;
     pub(crate) const GPIO6_OUT_VAL: usize = 1;
     pub(crate) const GPIO6_OUT_SRC: usize = 2;
@@ -164,11 +164,11 @@ mod ti954 {
     pub(crate) const REG_MAX_FRM_LO: usize = 0x1e;
     pub(crate) const MAX_FRAME_LO: usize = 0;
 
-    pub(crate) const REG_CSI_PLL_CTL: usize = 0x1f;
+    pub(crate) const REG_CSI_PLL_CTL: u32 = 0x1f;
     pub(crate) const CSI_TX_SPEED: usize = 0;
 
-    pub(crate) const REG_FWD_CTL1: usize = 0x20;
-    pub(crate) const FWD_PORT0_DIS: usize = 4;
+    pub(crate) const REG_FWD_CTL1: u32 = 0x20;
+    pub(crate) const FWD_PORT0_DIS: u32 = 4;
     pub(crate) const FWD_PORT1_DIS: usize = 6;
 
     pub(crate) const FWD_CTL2: usize = 0x21;
@@ -225,16 +225,16 @@ mod ti954 {
     pub(crate) const REG_TIMESTAMP_P1_LO: usize = 0x2d;
     pub(crate) const TIMESTAMP_P1_LO: usize = 0;
 
-    pub(crate) const REG_CSI_CTL: usize = 0x33;
+    pub(crate) const REG_CSI_CTL: u32 = 0x33;
     pub(crate) const CSI_ENABLE: usize = 0;
     pub(crate) const CSI_CONTS_CLOCK: usize = 1;
     pub(crate) const CSI_ULP: usize = 2;
     pub(crate) const CSI_LANE_COUNT: usize = 4;
     pub(crate) const CSI_CAL_EN: usize = 6;
-    pub(crate) const CSI_4_LANE: usize = 0;
-    pub(crate) const CSI_3_LANE: usize = 1;
-    pub(crate) const CSI_2_LANE: usize = 2;
-    pub(crate) const CSI_1_LANE: usize = 3;
+    pub(crate) const CSI_4_LANE: u32 = 0;
+    pub(crate) const CSI_3_LANE: u32 = 1;
+    pub(crate) const CSI_2_LANE: u32 = 2;
+    pub(crate) const CSI_1_LANE: u32 = 3;
 
     pub(crate) const REG_CSI_CTL2: usize = 0x34;
     pub(crate) const CSI_CAL_PERIODIC: usize = 0;
@@ -349,7 +349,7 @@ mod ti954 {
     pub(crate) const REG_BIST_ERR_COUNT: usize = 0x57;
     pub(crate) const BIST_ERROR_COUNT: usize = 0;
 
-    pub(crate) const REG_BCC_CONFIG: usize = 0x58;
+    pub(crate) const REG_BCC_CONFIG: u32 = 0x58;
     pub(crate) const BC_FREQ_SELECT: usize = 0;
     pub(crate) const BC_CRC_GENERAOTR_ENABLE: usize = 3;
     pub(crate) const BC_ALWAYS_ON: usize = 4;
@@ -359,7 +359,7 @@ mod ti954 {
     pub(crate) const BC_FREQ_2M5: usize = 0;
     pub(crate) const BC_FREQ_1M: usize = 2;
     pub(crate) const BC_FREQ_25M: usize = 5;
-    pub(crate) const BC_FREQ_50M: usize = 6;
+    pub(crate) const BC_FREQ_50M: u32 = 6;
     pub(crate) const BC_FREQ_250: usize = 7;
 
     pub(crate) const REG_DATAPATH_CTL1: usize = 0x59;
@@ -372,7 +372,7 @@ mod ti954 {
     pub(crate) const FREEZE_DEVICE_ID: usize = 0;
     pub(crate) const SER_ID: usize = 1;
 
-    pub(crate) const REG_SER_ALIAS_ID: usize = 0x5c;
+    pub(crate) const REG_SER_ALIAS_ID: u32 = 0x5c;
     pub(crate) const SER_AUTO_ACK: usize = 0;
     pub(crate) const SER_ALIAS_ID: usize = 1;
 
@@ -419,11 +419,11 @@ mod ti954 {
     pub(crate) const CSI_WAIT_FS: usize = 6;
     pub(crate) const CSI_WAIT_FS1: usize = 7;
 
-    pub(crate) const REG_BC_GPIO_CTL0: usize = 0x6e;
+    pub(crate) const REG_BC_GPIO_CTL0: u32 = 0x6e;
     pub(crate) const BC_GPIO0_SEL: usize = 0;
     pub(crate) const BC_GPIO1_SEL: usize = 4;
 
-    pub(crate) const REG_BC_GPIO_CTL1: usize = 0x6f;
+    pub(crate) const REG_BC_GPIO_CTL1: u32 = 0x6f;
     pub(crate) const BC_GPIO2_SEL: usize = 0;
     pub(crate) const BC_GPIO3_SEL: usize = 4;
 
@@ -435,7 +435,7 @@ mod ti954 {
     pub(crate) const RAW12_DT: usize = 0;
     pub(crate) const RAW12_VC: usize = 6;
 
-    pub(crate) const REG_CSI_VC_MAP: usize = 0x72;
+    pub(crate) const REG_CSI_VC_MAP: u32 = 0x72;
     pub(crate) const CSI_VC_MAP: usize = 0;
 
     pub(crate) const REG_LINE_COUNT_HI: usize = 0x73;
@@ -506,7 +506,7 @@ mod ti954 {
     pub(crate) const REG_IND_ACC_DATA: usize = 0xb2;
     pub(crate) const IA_DATA: usize = 0;
 
-    pub(crate) const REG_BIST_CONTROL: usize = 0xb3;
+    pub(crate) const REG_BIST_CONTROL: u32 = 0xb3;
     pub(crate) const BIST_EN: usize = 0;
     pub(crate) const BIST_CLOCK_SOURCE: usize = 1;
     pub(crate) const BIST_PIN_CONFIG: usize = 3;
@@ -618,7 +618,7 @@ mod ti954 {
     pub(crate) const REG_SEN_INT_FALL_STS: usize = 0xdf;
     pub(crate) const SEN_INT_FALL: usize = 0;
 
-    pub(crate) const REG_FPD3_RX_ID0: usize = 0xf0;
+    pub(crate) const REG_FPD3_RX_ID0: u32 = 0xf0;
     pub(crate) const FPD3_RX_ID0: usize = 0;
     pub(crate) const REG_FPD3_RX_ID1: usize = 0xf1;
     pub(crate) const FPD3_RX_ID1: usize = 0;
@@ -641,52 +641,52 @@ mod ti954 {
     // Indirect Register Map Description
     pub(crate) const REG_IA_PATTERN_GEN_PAGE_BLOCK_SELECT: usize = 0x0;
 
-    pub(crate) const REG_IA_PGEN_CTL: usize = 0x01;
-    pub(crate) const PGEB_ENABLE: usize = 0;
+    pub(crate) const REG_IA_PGEN_CTL: u8 = 0x01;
+    pub(crate) const PGEB_ENABLE: u8 = 0;
 
-    pub(crate) const REG_IA_PGEB_CFG: usize = 0x02;
+    pub(crate) const REG_IA_PGEB_CFG: u8 = 0x02;
     pub(crate) const BLOCK_SIZE: usize = 0;
     pub(crate) const NUM_CBARS: usize = 4;
     pub(crate) const PGEN_FIXED_EN: usize = 7;
 
-    pub(crate) const REG_IA_PGEN_CSI_DI: usize = 0x03;
+    pub(crate) const REG_IA_PGEN_CSI_DI: u8 = 0x03;
     pub(crate) const PGEN_CSI_DT: usize = 0;
     pub(crate) const PGEN_CSI_VC: usize = 6;
 
-    pub(crate) const REG_IA_PGEN_LINE_SIZE1: usize = 0x04;
+    pub(crate) const REG_IA_PGEN_LINE_SIZE1: u8 = 0x04;
     pub(crate) const PGEN_LINE_SIZE1: usize = 0;
 
-    pub(crate) const REG_IA_PGEN_LINE_SIZE0: usize = 0x05;
+    pub(crate) const REG_IA_PGEN_LINE_SIZE0: u8 = 0x05;
     pub(crate) const PGEN_LINE_SIZE0: usize = 0;
 
-    pub(crate) const REG_IA_PGEN_BAR_SIZE1: usize = 0x06;
+    pub(crate) const REG_IA_PGEN_BAR_SIZE1: u8 = 0x06;
     pub(crate) const PGEN_BAR_SIZE1: usize = 0;
 
-    pub(crate) const REG_IA_PGEN_BAR_SIZE0: usize = 0x07;
+    pub(crate) const REG_IA_PGEN_BAR_SIZE0: u8 = 0x07;
     pub(crate) const PGEN_BAR_SIZE0: usize = 0;
 
-    pub(crate) const REG_IA_PGEN_ACT_LPF1: usize = 0x08;
+    pub(crate) const REG_IA_PGEN_ACT_LPF1: u8 = 0x08;
     pub(crate) const PGEN_ACT_LPF1: usize = 0;
 
-    pub(crate) const REG_IA_PGEN_ACT_LPF0: usize = 0x09;
+    pub(crate) const REG_IA_PGEN_ACT_LPF0: u8 = 0x09;
     pub(crate) const PGEN_ACT_LPF0: usize = 0;
 
-    pub(crate) const REG_IA_PGEN_TOT_LPF1: usize = 0x0a;
+    pub(crate) const REG_IA_PGEN_TOT_LPF1: u8 = 0x0a;
     pub(crate) const PGEN_TOT_LPF1: usize = 0;
 
-    pub(crate) const REG_IA_PGEN_TOT_LPF0: usize = 0x0b;
+    pub(crate) const REG_IA_PGEN_TOT_LPF0: u8 = 0x0b;
     pub(crate) const PGEN_TOT_LPF0: usize = 0;
 
-    pub(crate) const REG_IA_PGEN_LINE_PD1: usize = 0x0c;
+    pub(crate) const REG_IA_PGEN_LINE_PD1: u8 = 0x0c;
     pub(crate) const PGEN_LINE_PD1: usize = 0;
 
-    pub(crate) const REG_IA_PGEN_LINE_PD0: usize = 0x0d;
+    pub(crate) const REG_IA_PGEN_LINE_PD0: u8 = 0x0d;
     pub(crate) const PGEN_LINE_PD0: usize = 0;
 
-    pub(crate) const REG_IA_PGEN_VBP: usize = 0x0e;
+    pub(crate) const REG_IA_PGEN_VBP: u8 = 0x0e;
     pub(crate) const PGEN_VBP: usize = 0;
 
-    pub(crate) const REG_IA_PGEN_VFP: usize = 0x0f;
+    pub(crate) const REG_IA_PGEN_VFP: u8 = 0x0f;
     pub(crate) const PGEN_VFP: usize = 0;
 
     pub(crate) const REG_IA_PGEN_COLOR0: usize = 0x10;
@@ -1094,6 +1094,8 @@ mod ti953 {
     pub(crate) const RX_ID_LENGTH: usize = 6;
 }
 
+const NUM_SERIALIZER: usize = 2;
+
 kernel::module_i2c_driver! {
     type: Ds90ub954,
     name: "ds90ub954",
@@ -1117,13 +1119,49 @@ kernel::of_device_table!(
 
 const REGMAP_CONFIG: regmap::Config = regmap::Config::new(8, 8);
 
+#[rustfmt::skip]
+static DS90UB95X_TP_REG_VAL: [u8; 62] = [
+	// Indirect Pattern Gen Registers
+	0xB0, 0x00,
+	0xB1, ti954::REG_IA_PGEN_CTL,
+	0xB2, (1<<ti954::PGEB_ENABLE),
+	0xB1, ti954::REG_IA_PGEB_CFG,
+	0xB2, 0x35,
+	0xB1, ti954::REG_IA_PGEN_CSI_DI,
+	0xB2, 0x2B,
+	0xB1, ti954::REG_IA_PGEN_LINE_SIZE1,
+	0xB2, 0x14,
+	0xB1, ti954::REG_IA_PGEN_LINE_SIZE0,
+	0xB2, 0x00,
+	0xB1, ti954::REG_IA_PGEN_BAR_SIZE1,
+	0xB2, 0x02,
+	0xB1, ti954::REG_IA_PGEN_BAR_SIZE0,
+	0xB2, 0x80,
+	0xB1, ti954::REG_IA_PGEN_ACT_LPF1,
+	0xB2, 0x08,
+	0xB1, ti954::REG_IA_PGEN_ACT_LPF0,
+	0xB2, 0x70,
+	0xB1, ti954::REG_IA_PGEN_TOT_LPF1,
+	0xB2, 0x08,
+	0xB1, ti954::REG_IA_PGEN_TOT_LPF0,
+	0xB2, 0x70,
+	0xB1, ti954::REG_IA_PGEN_LINE_PD1,
+	0xB2, 0x0B,
+	0xB1, ti954::REG_IA_PGEN_LINE_PD0,
+	0xB2, 0x93,
+	0xB1, ti954::REG_IA_PGEN_VBP,
+	0xB2, 0x21,
+	0xB1, ti954::REG_IA_PGEN_VFP,
+	0xB2, 0x0A,
+];
+
 struct Ds90ub954 {
     i2c_client: i2c::Client,
     pass_gpio: Option<gpio::Desc>,
     lock_gpio: Option<gpio::Desc>,
     pdb_gpio: Option<gpio::Desc>,
     regmap: regmap::Regmap,
-    serializers: KVec<Ds90ub953>,
+    serializers: [Option<Ds90ub953>; NUM_SERIALIZER],
     // int sel_rx_port; // selected rx port
     // int sel_ia_config; // selected ia configuration
     csi_lane_count: u32,
@@ -1217,9 +1255,235 @@ impl Ds90ub954 {
         dev_info!(dev, "starting init ds90ub954\n");
 
         let dev_id = self.read(ti954::REG_I2C_DEV_ID)?;
-        dev_info!(dev, "dev_id: {dev_id}\n");
+        let rev = self.read(ti954::REG_REVISION)?;
 
-        // TODO rest of init function
+        let mut id_code = [0; ti954::RX_ID_LENGTH];
+        for (i, byte) in id_code.iter_mut().enumerate() {
+            *byte = self.read(ti954::REG_FPD3_RX_ID0 + i as u32)? as u8;
+        }
+        let id_code = BStr::from_bytes(&id_code);
+
+        dev_info!(
+            dev,
+            "device ID: 0x{dev_id:x}, code: {id_code}, revision: 0x{rev:x}\n"
+        );
+
+        // disable builtin self test
+        self.write(ti954::REG_BIST_CONTROL, 0)?;
+
+        // set CSI speed (REFCLK 25 MHz)
+        //  00 : 1.6 Gbps serial rate
+        //  01 : Reserved
+        //  10 : 800 Mbps serial rate
+        //  11 : 400 Mbps serial rate
+        let value = match self.csi_lane_speed {
+            400 => 0x3,
+
+            800 => 0x2,
+            _ => 0x0,
+        };
+        self.write(ti954::REG_CSI_PLL_CTL, value << ti954::CSI_TX_SPEED)?;
+
+        // TODO add debug stuff? or just omit it?
+
+        // set number of csi lanes
+        let value = match self.csi_lane_count {
+            1 => ti954::CSI_1_LANE,
+            2 => ti954::CSI_2_LANE,
+            3 => ti954::CSI_3_LANE,
+            _ => ti954::CSI_4_LANE,
+        };
+        self.write(
+            ti954::REG_CSI_CTL,
+            (1 << ti954::CSI_ENABLE)
+                | (if self.continuous_clock { 1 } else { 0 } << ti954::CSI_CONTS_CLOCK)
+                | (value << ti954::CSI_LANE_COUNT)
+                | (1 << ti954::CSI_CAL_EN),
+        )?;
+
+        kernel::delay::msleep(500);
+
+        // check if test pattern should be turned on
+        if self.test_pattern {
+            dev_info!(dev, "deserializer init testpattern\n");
+            let _ = self.init_testpattern().map_err(|_| {
+                dev_info!(dev, "deserializer init testpattern failed\n");
+            });
+        }
+
+        // Setting PASS and LOCK to "all enabled receiver ports
+        let value = 0b00111100;
+        self.write(ti954::REG_RX_PORT_CTL, value)?;
+
+        // for loop goes through each serializer
+        for i in 0..self.serializers.len() {
+            let Some(ds90ub953) = self.serializers[i] else {
+                continue;
+            };
+            let rx_port = ds90ub953.rx_channel;
+            dev_info!(dev, "start init of serializer rx_port: {rx_port}\n");
+
+            // Use closure for scoped early return and easy error-path cleanup.
+            let mut init_serializer = || -> Result<()> {
+                // Get TI954_REG_RX_PORT_CTL and enable receiver rx_port
+                let mut value = self.read(ti954::REG_RX_PORT_CTL)?;
+
+                value |= 1 << (ti954::PORT0_EN + rx_port);
+                self.write(ti954::REG_RX_PORT_CTL, value)?;
+
+                // wait for receiver to calibrate link
+                kernel::delay::msleep(400);
+
+                // enable csi forwarding
+                let mut value = self.read(ti954::REG_FWD_CTL1)?;
+
+                value &= 0xEF << rx_port;
+                self.write(ti954::REG_FWD_CTL1, value)?;
+
+                kernel::delay::msleep(500);
+
+                // config back channel RX port [specific register]
+                self.write_rx_port(
+                    rx_port,
+                    ti954::REG_BCC_CONFIG,
+                    (ti954::BC_FREQ_50M << ti954::BC_FREQ_SELECT)
+                        | (1 << ti954::BC_CRC_GENERAOTR_ENABLE)
+                        | (1 << ti954::BC_ALWAYS_ON)
+                        | (if ds90ub953.i2c_pass_through_all { 1 } else { 0 }
+                            << ti954::I2C_PASS_THROUGH_ALL)
+                        | (1 << ti954::I2C_PASS_THROUGH),
+                )?;
+
+                // wait for back channel
+                let mut backchannel_setup_failed = true;
+                for i in 0..50 {
+                    kernel::delay::msleep(10);
+                    let value = self.read(ti954::REG_DEVICE_STS)?;
+                    dev_info!(dev, "DEVICE STS: 0x{value:02x}, id={i} x 10ms\n",);
+                    if (value & 0xff) == 0xdf {
+                        backchannel_setup_failed = false;
+                        dev_info!(dev, "backchannel is ready\n",);
+                        break;
+                    }
+                }
+                if backchannel_setup_failed {
+                    dev_err!(dev, "Backchannel setup failed!\n");
+                    return Err(EIO);
+                }
+
+                // setup i2c forwarding
+                self.write_rx_port(
+                    rx_port,
+                    ti954::REG_SER_ALIAS_ID,
+                    ds90ub953.i2c_address << ti954::SER_ALIAS_ID,
+                )?;
+
+                // Serializer GPIO control
+                match self.write_rx_port(
+                    rx_port,
+                    ti954::REG_BC_GPIO_CTL0,
+                    (ds90ub953.gpio[0].control << ti954::BC_GPIO0_SEL)
+                        | (ds90ub953.gpio[1].control << ti954::BC_GPIO1_SEL),
+                ) {
+                    Err(_) => dev_info!(dev, "could not set ti954::REG_BC_GPIO_CTL0\n",),
+                    _ => dev_info!(dev, "Successfully set ti954::REG_BC_GPIO_CTL0\n",),
+                }
+
+                match self.write_rx_port(
+                    rx_port,
+                    ti954::REG_BC_GPIO_CTL1,
+                    (ds90ub953.gpio[2].control << ti954::BC_GPIO2_SEL)
+                        | (ds90ub953.gpio[3].control << ti954::BC_GPIO3_SEL),
+                ) {
+                    Err(_) => dev_info!(dev, "could not set ti954::REG_BC_GPIO_CTL1\n",),
+                    _ => dev_info!(dev, "Successfully set ti954::REG_BC_GPIO_CTL1\n",),
+                }
+
+                // TODO: set i2c slave ids and aliases
+                // for(i=0; (i < serializer.i2c_alias_num) && (i < NUM_ALIAS); i++) {
+                // 	val = serializer.i2c_slave[i];
+                // 	if(val == 0) {
+                // 		continue;
+                // 	}
+                // 	err = ds90ub954_write_rx_port(priv, rx_port,
+                // 				      ti954::REG_SLAVE_ID0+i,
+                // 				      (val<<ti954::ALIAS_ID0));
+                // 	if(unlikely(err))
+                // 		goto ser_init_failed;
+                // 	dev_info(dev, "%s: slave id %i: 0x%X\n", __func__, i, val);
+
+                // 	val = serializer.i2c_alias[i];
+                // 	if(val == 0) {
+                // 		continue;
+                // 	}
+                // 	err = ds90ub954_write_rx_port(priv, rx_port,
+                // 				      ti954::REG_ALIAS_ID0+i,
+                // 				      (val<<ti954::ALIAS_ID0));
+                // 	if(unlikely(err))
+                // 		goto ser_init_failed;
+                // 	dev_info(dev, "%s: alias id %i: 0x%X\n", __func__, i, val);
+                // }
+
+                // TODO: need vc_map from devicetree first
+                //
+                // // set virtual channel id mapping
+                // self.write_rx_port(rx_port, ti954::REG_CSI_VC_MAP, ds90ub953.vc_map)?;
+                //
+                // let val = ds90ub953.vc_map & 0b11;
+                // dev_info!(dev, "VC-ID 0 mapped to {val}\n");
+                // let val = (ds90ub953.vc_map & 0b1100) >> 2;
+                // dev_info!(dev, "VC-ID 1 mapped to {val}\n");
+                // let val = (ds90ub953.vc_map & 0b110000) >> 4;
+                // dev_info!(dev, "VC-ID 2 mapped to {val}\n");
+                // let val = (ds90ub953.vc_map & 0b11000000) >> 6;
+                // dev_info!(dev, "VC-ID 3 mapped to {val}\n");
+
+                // all rx_port specific registers set for rx_port X
+                dev_info!(dev, "init of deserializer rx_port {rx_port} successful\n");
+                Ok(())
+            };
+
+            if init_serializer().is_err() {
+                dev_err!(dev, "init deserializer rx_port {rx_port} failed\n");
+                dev_err!(dev, "deserializer rx_port {rx_port} is deactivated\n");
+
+                self.serializers[i] = None;
+
+                // DISABLE RX PORT
+                let Ok(mut val) = self.read(ti954::REG_RX_PORT_CTL) else {
+                    continue;
+                };
+                val &= 0xFF ^ (1 << (ti954::PORT0_EN + rx_port));
+                if self.write(ti954::REG_RX_PORT_CTL, val).is_err() {
+                    continue;
+                }
+                // DISABLE CSI FORWARDING
+                let Ok(mut val) = self.read(ti954::REG_FWD_CTL1) else {
+                    continue;
+                };
+                val |= 1 << (ti954::FWD_PORT0_DIS + rx_port);
+                let _ = self.write(ti954::REG_FWD_CTL1, val);
+            }
+        }
+
+        // setup gpio forwarding, default all input
+        self.write(
+            ti954::REG_GPIO_INPUT_CTL,
+            (1 << ti954::GPIO6_INPUT_EN)
+                | (1 << ti954::GPIO5_INPUT_EN)
+                | (1 << ti954::GPIO4_INPUT_EN)
+                | (1 << ti954::GPIO3_INPUT_EN)
+                | (1 << ti954::GPIO2_INPUT_EN)
+                | (1 << ti954::GPIO1_INPUT_EN)
+                | (1 << ti954::GPIO0_INPUT_EN),
+        )?;
+        self.write(ti954::REG_GPIO0_PIN_CTL, 0)?;
+        self.write(ti954::REG_GPIO1_PIN_CTL, 0)?;
+        self.write(ti954::REG_GPIO2_PIN_CTL, 0)?;
+        self.write(ti954::REG_GPIO3_PIN_CTL, 0)?;
+        self.write(ti954::REG_GPIO4_PIN_CTL, 0)?;
+        self.write(ti954::REG_GPIO5_PIN_CTL, 0)?;
+        self.write(ti954::REG_GPIO6_PIN_CTL, 0)?;
 
         dev_info!(dev, "init ds90ub954 done\n");
         Ok(())
@@ -1243,6 +1507,28 @@ impl Ds90ub954 {
             );
             err
         })
+    }
+
+    fn write_rx_port(&mut self, rx_port: u32, register: u32, value: u32) -> Result<()> {
+        todo!("{rx_port} {register} {value}")
+    }
+
+    fn init_testpattern(&mut self) -> Result<()> {
+        for i in (0..DS90UB95X_TP_REG_VAL.len()).step_by(2) {
+            self.write(
+                DS90UB95X_TP_REG_VAL[i].into(),
+                DS90UB95X_TP_REG_VAL[i + 1].into(),
+            )
+            .map_err(|err| {
+                dev_info!(
+                    self.i2c_client.as_ref(),
+                    "954: enable test pattern failed\n"
+                );
+                err
+            })?;
+        }
+        dev_info!(self.i2c_client.as_ref(), "enable test pattern successful\n");
+        Ok(())
     }
 }
 
@@ -1320,6 +1606,7 @@ fn ds90ub954_parse_dt(dev: &kernel::device::Device) -> Result<Ds90ub954ParseDtRe
     })
 }
 
+#[derive(Debug, Clone, Copy)]
 struct Ds90ub953 {
     // struct i2c_client *client;
     // struct regmap *regmap;
@@ -1333,7 +1620,7 @@ struct Ds90ub953 {
     continuous_clock: bool,
     i2c_pass_through_all: bool,
 
-    gpio_config: [Ds90ub953GpioConfig; 4],
+    gpio: [Ds90ub953GpioConfig; 4],
 
     // reference output clock control parameters
     hs_clk_div: u32,
@@ -1342,22 +1629,24 @@ struct Ds90ub953 {
 
     virtual_channel_map: u32,
 }
+#[derive(Debug, Clone, Copy)]
 struct Ds90ub953GpioConfig {
     output_enable: u32,
     control: u32,
 }
-fn ds90ub953_parse_dt(dev: &kernel::device::Device) -> Result<KVec<Ds90ub953>> {
+fn ds90ub953_parse_dt(dev: &kernel::device::Device) -> Result<[Option<Ds90ub953>; NUM_SERIALIZER]> {
     // TODO: This function body is pseudo-code.
     // There isn't yet a Rust abstraction for parsing nested device tree nodes.
 
-    // TODO: needs Rust abstraction for iterating over devicetree nodes
-    // let serializers = of_get_child_by_name(des, "serializers");
-    let serializers: [&kernel::device::Device; 0] = []; // dummy to please compiler
     dev_warn!(dev, "ds90ub953_parse_dt is not yet implemented\n");
 
-    let mut res = KVec::new();
+    let mut res = [const { None }; NUM_SERIALIZER];
 
-    for serializer in serializers {
+    // TODO: needs Rust abstraction for iterating over devicetree nodes
+    // let serializers = of_get_child_by_name(des, "serializers");
+    for i in 0..NUM_SERIALIZER {
+        let serializer = dev; // FIXME
+
         let get_u32 = |prop, default| {
             let val = serializer
                 .property_read::<u32>(prop, None)
@@ -1380,7 +1669,7 @@ fn ds90ub953_parse_dt(dev: &kernel::device::Device) -> Result<KVec<Ds90ub953>> {
 
         let csi_lane_count = get_u32(c_str!("csi-lane-count"), 4);
 
-        let gpio_config = [
+        let gpio = [
             Ds90ub953GpioConfig {
                 output_enable: get_u32(c_str!("gpio0-output-enable"), 0),
                 control: get_u32(c_str!("gpio0-control"), 0b1000),
@@ -1495,22 +1784,19 @@ fn ds90ub953_parse_dt(dev: &kernel::device::Device) -> Result<KVec<Ds90ub953>> {
 
         let virtual_channel_map = get_u32(c_str!("virtual-channel-map"), 0xE4);
 
-        res.push(
-            Ds90ub953 {
-                gpio_config,
-                rx_channel,
-                test_pattern,
-                csi_lane_count,
-                hs_clk_div,
-                i2c_address,
-                continuous_clock,
-                i2c_pass_through_all,
-                div_m_val,
-                div_n_val,
-                virtual_channel_map,
-            },
-            GFP_KERNEL,
-        )?;
+        res[i] = Some(Ds90ub953 {
+            gpio,
+            rx_channel,
+            test_pattern,
+            csi_lane_count,
+            hs_clk_div,
+            i2c_address,
+            continuous_clock,
+            i2c_pass_through_all,
+            div_m_val,
+            div_n_val,
+            virtual_channel_map,
+        });
     }
 
     dev_info!(dev, "ds90ub953_parse_dt done\n");

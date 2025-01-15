@@ -83,6 +83,18 @@ impl Regmap {
     pub fn as_raw(&self) -> *mut bindings::regmap {
         self.0.as_ptr()
     }
+
+    pub fn read(&mut self, register: u32) -> Result<u32> {
+        let mut value = 0;
+        // SAFETY: By the type invariant, `self.as_raw` is a valid pointer.
+        let ret = unsafe { bindings::regmap_read(self.as_raw(), register, &mut value) };
+        to_result(ret)?;
+        Ok(value)
+    }
+
+    pub fn write(&self, register: u32, value: u32) -> Result<()> {
+        to_result(unsafe { bindings::regmap_write(self.as_raw(), register, value) })
+    }
 }
 
 impl Drop for Regmap {

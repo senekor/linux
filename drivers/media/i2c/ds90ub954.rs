@@ -10,7 +10,7 @@ use kernel::{c_str, gpio::consumer as gpio, i2c, of, prelude::*, regmap};
 ///  Deserializer registers
 #[allow(unused)]
 mod ti954 {
-    pub(crate) const REG_I2C_DEV_ID: usize = 0x00;
+    pub(crate) const REG_I2C_DEV_ID: u32 = 0x00;
     pub(crate) const DES_ID: usize = 0;
     pub(crate) const DEVICE_ID: usize = 1;
 
@@ -1115,12 +1115,14 @@ kernel::of_device_table!(
     [(of::DeviceId::new(c_str!("ti,ds90ub954")), ()),]
 );
 
+const REGMAP_CONFIG: regmap::Config = regmap::Config::new(8, 8);
+
 struct Ds90ub954 {
     i2c_client: i2c::Client,
     pass_gpio: Option<gpio::Desc>,
     lock_gpio: Option<gpio::Desc>,
     pdb_gpio: Option<gpio::Desc>,
-    // struct regmap *regmap;
+    regmap: regmap::Regmap,
     serializers: KVec<Ds90ub953>,
     // int sel_rx_port; // selected rx port
     // int sel_ia_config; // selected ia configuration
@@ -1138,7 +1140,7 @@ impl i2c::Driver for Ds90ub954 {
     const OF_ID_TABLE: Option<of::IdTable<Self::IdInfo>> = Some(&OF_ID_TABLE);
 
     fn probe(client: &mut i2c::Client, id_info: Option<&Self::IdInfo>) -> Result<Pin<KBox<Self>>> {
-        pr_info!("Hello from DS90UB954 driver\n");
+        pr_info!("probing ds90ub954\n");
 
         let dev = client.as_ref();
         let Some(_id_info) = id_info else {
@@ -1154,22 +1156,19 @@ impl i2c::Driver for Ds90ub954 {
             csi_lane_speed,
             test_pattern,
             continuous_clock,
-        } = ds90ub954_parse_dt(dev).map_err(|e| {
+        } = ds90ub954_parse_dt(dev).map_err(|err| {
             dev_err!(dev, "error parsing device tree\n");
-            e
+            err
         })?;
 
-        // TODO create regmap abstractions that match C driver more closely
-        // (use regmap without "fields" abstraction)
-        // let regmap_config = regmap::Config::<AccessOps>::new(8, 8);
-        // let regmap = regmap::Regmap::init_i2c(client, &regmap_config).map_err(|e| {
-        //     dev_err!(dev, "regmap init failed ({})\n", e.to_errno());
-        //     e
-        // })?;
+        let regmap = regmap::Regmap::init_i2c(client, &REGMAP_CONFIG).map_err(|err| {
+            dev_err!(dev, "regmap init failed ({})\n", err.to_errno());
+            err
+        })?;
 
-        let serializers = ds90ub953_parse_dt(dev).map_err(|e| {
+        let serializers = ds90ub953_parse_dt(dev).map_err(|err| {
             dev_err!(dev, "error parsing device tree\n");
-            e
+            err
         })?;
 
         let driver_data = Self {
@@ -1177,6 +1176,7 @@ impl i2c::Driver for Ds90ub954 {
             pass_gpio,
             lock_gpio,
             pdb_gpio,
+            regmap,
             serializers,
             csi_lane_count,
             csi_lane_speed,
@@ -1189,6 +1189,11 @@ impl i2c::Driver for Ds90ub954 {
 
         kernel::delay::msleep(6); // wait for sensor to start
 
+        driver_data.init()?;
+
+        kernel::delay::msleep(500);
+
+        pr_info!("done probing ds90ub954\n");
         Ok(driver_data.into())
     }
 }
@@ -1204,6 +1209,40 @@ impl Ds90ub954 {
         if let Some(pdb_gpio) = &mut self.pdb_gpio {
             pdb_gpio.set_value_cansleep(0);
         }
+    }
+
+    fn init(&mut self) -> Result<()> {
+        let i2c_client = self.i2c_client.clone();
+        let dev = i2c_client.as_ref();
+        dev_info!(dev, "starting init ds90ub954\n");
+
+        let dev_id = self.read(ti954::REG_I2C_DEV_ID)?;
+        dev_info!(dev, "dev_id: {dev_id}\n");
+
+        // TODO rest of init function
+
+        dev_info!(dev, "init ds90ub954 done\n");
+        Ok(())
+    }
+
+    fn read(&mut self, register: u32) -> Result<u32> {
+        self.regmap.read(register).map_err(|err| {
+            dev_err!(
+                self.i2c_client.as_ref(),
+                "cannot read register 0x{register:02x} ({err:?})!\n"
+            );
+            err
+        })
+    }
+
+    fn write(&mut self, register: u32, value: u32) -> Result<()> {
+        self.regmap.write(register, value).map_err(|err| {
+            dev_err!(
+                self.i2c_client.as_ref(),
+                "cannot write register 0x{register:02x} ({err:?})!\n"
+            );
+            err
+        })
     }
 }
 

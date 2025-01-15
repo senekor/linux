@@ -115,7 +115,8 @@ impl i2c::Driver for Ncv6336 {
     const OF_ID_TABLE: Option<of::IdTable<Self::IdInfo>> = Some(&OF_ID_TABLE);
 
     fn probe(client: &mut i2c::Client, _id_info: Option<&Self::IdInfo>) -> Result<Pin<KBox<Self>>> {
-        let config = regmap::Config::<AccessOps>::new(8, 8)
+        let config = regmap::Config::new(8, 8)
+            .with_access_ops::<AccessOps>()
             .with_max_register(0x16)
             .with_cache_type(regmap::CacheType::RbTree);
         let regmap = Arc::new(regmap::Regmap::init_i2c(client, &config)?, GFP_KERNEL)?;

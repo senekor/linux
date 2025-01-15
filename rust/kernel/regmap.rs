@@ -40,7 +40,7 @@ use crate::{
 };
 #[cfg(CONFIG_REGMAP_I2C = "y")]
 use crate::{error::from_err_ptr, i2c};
-use core::{marker::PhantomData, ptr::NonNull};
+use core::ptr::NonNull;
 
 /// Type of caching
 #[repr(u32)]
@@ -71,7 +71,7 @@ pub struct Regmap(NonNull<bindings::regmap>);
 impl Regmap {
     #[cfg(CONFIG_REGMAP_I2C = "y")]
     /// Initialize a [`Regmap`] instance for an `i2c` client.
-    pub fn init_i2c<T: ConfigOps>(i2c: &i2c::Client, config: &Config<T>) -> Result<Self> {
+    pub fn init_i2c(i2c: &i2c::Client, config: &Config) -> Result<Self> {
         // SAFETY: Type invariants guarantee that `i2c.as_raw` is valid and non-null and
         // the Config type invariant guarantee that `config.raw` always contains valid data.
         let regmap = from_err_ptr(unsafe { bindings::regmap_init_i2c(i2c.as_raw(), &config.raw) })?;
@@ -239,11 +239,10 @@ pub trait ConfigOps {
 /// # Invariants
 ///
 /// `self.raw` always contain valid data.
-pub struct Config<T: ConfigOps> {
+pub struct Config {
     raw: bindings::regmap_config,
-    _phantom: PhantomData<T>,
 }
-impl<T: ConfigOps> Config<T> {
+impl Config {
     /// Create a new regmap Config
     pub const fn new(reg_bits: i32, val_bits: i32) -> Self {
         // SAFETY: FFI type is valid to be zero-initialized.
@@ -251,15 +250,8 @@ impl<T: ConfigOps> Config<T> {
 
         cfg.reg_bits = reg_bits;
         cfg.val_bits = val_bits;
-        cfg.writeable_reg = Some(Self::writeable_reg_callback);
-        cfg.readable_reg = Some(Self::readable_reg_callback);
-        cfg.volatile_reg = Some(Self::volatile_reg_callback);
-        cfg.precious_reg = Some(Self::precious_reg_callback);
 
-        Self {
-            raw: cfg,
-            _phantom: PhantomData,
-        }
+        Self { raw: cfg }
     }
 
     config_with!(
@@ -272,31 +264,51 @@ impl<T: ConfigOps> Config<T> {
         cache_type: CacheType, cache_type as _
     );
 
+    pub fn with_access_ops<T: ConfigOps>(mut self) -> Self {
+        self.raw.writeable_reg = Some(Self::writeable_reg_callback::<T>);
+        self.raw.readable_reg = Some(Self::readable_reg_callback::<T>);
+        self.raw.volatile_reg = Some(Self::volatile_reg_callback::<T>);
+        self.raw.precious_reg = Some(Self::precious_reg_callback::<T>);
+        self
+    }
+
     /// # Safety
     ///
     /// `_dev` must be a non-null and valid `struct device` pointer.
-    unsafe extern "C" fn writeable_reg_callback(_dev: *mut bindings::device, reg: u32) -> bool {
+    unsafe extern "C" fn writeable_reg_callback<T: ConfigOps>(
+        _dev: *mut bindings::device,
+        reg: u32,
+    ) -> bool {
         T::is_writeable_reg(reg)
     }
 
     /// # Safety
     ///
     /// `_dev` must be a non-null and valid `struct device` pointer.
-    unsafe extern "C" fn readable_reg_callback(_dev: *mut bindings::device, reg: u32) -> bool {
+    unsafe extern "C" fn readable_reg_callback<T: ConfigOps>(
+        _dev: *mut bindings::device,
+        reg: u32,
+    ) -> bool {
         T::is_readable_reg(reg)
     }
 
     /// # Safety
     ///
     /// `_dev` must be a non-null and valid `struct device` pointer.
-    unsafe extern "C" fn volatile_reg_callback(_dev: *mut bindings::device, reg: u32) -> bool {
+    unsafe extern "C" fn volatile_reg_callback<T: ConfigOps>(
+        _dev: *mut bindings::device,
+        reg: u32,
+    ) -> bool {
         T::is_volatile_reg(reg)
     }
 
     /// # Safety
     ///
     /// `_dev` must be a non-null and valid `struct device` pointer.
-    unsafe extern "C" fn precious_reg_callback(_dev: *mut bindings::device, reg: u32) -> bool {
+    unsafe extern "C" fn precious_reg_callback<T: ConfigOps>(
+        _dev: *mut bindings::device,
+        reg: u32,
+    ) -> bool {
         T::is_precious_reg(reg)
     }
 }

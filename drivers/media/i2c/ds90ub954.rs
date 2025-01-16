@@ -287,7 +287,7 @@ mod ti954 {
     pub(crate) const EMBED_DTYPE_ID: usize = 0;
     pub(crate) const EMBED_DTYPE_EN: usize = 6;
 
-    pub(crate) const REG_FPD3_PORT_SEL: usize = 0x4c;
+    pub(crate) const REG_FPD3_PORT_SEL: u32 = 0x4c;
     pub(crate) const RX_WRITE_PORT_0: usize = 0;
     pub(crate) const RX_WRITE_PORT_1: usize = 1;
     pub(crate) const RX_READ_PORT: usize = 4;
@@ -1162,8 +1162,8 @@ struct Ds90ub954 {
     pdb_gpio: Option<gpio::Desc>,
     regmap: regmap::Regmap,
     serializers: [Option<Ds90ub953>; NUM_SERIALIZER],
-    // int sel_rx_port; // selected rx port
-    // int sel_ia_config; // selected ia configuration
+    selected_rx_port: Option<RxPort>,
+    selected_ia_config: Option<u32>,
     csi_lane_count: u32,
     csi_lane_speed: u32,
     test_pattern: bool,
@@ -1185,6 +1185,9 @@ impl i2c::Driver for Ds90ub954 {
             dev_err!(dev, "Failed to find matching dt id\n");
             return Err(ENODEV);
         };
+
+        let selected_rx_port = None;
+        let selected_ia_config = None;
 
         let Ds90ub954ParseDtReturn {
             pass_gpio,
@@ -1216,6 +1219,8 @@ impl i2c::Driver for Ds90ub954 {
             pdb_gpio,
             regmap,
             serializers,
+            selected_rx_port,
+            selected_ia_config,
             csi_lane_count,
             csi_lane_speed,
             test_pattern,
@@ -1328,7 +1333,7 @@ impl Ds90ub954 {
                 // Get TI954_REG_RX_PORT_CTL and enable receiver rx_port
                 let mut value = self.read(ti954::REG_RX_PORT_CTL)?;
 
-                value |= 1 << (ti954::PORT0_EN + rx_port);
+                value |= 1 << (ti954::PORT0_EN + rx_port.to_u32());
                 self.write(ti954::REG_RX_PORT_CTL, value)?;
 
                 // wait for receiver to calibrate link
@@ -1337,7 +1342,7 @@ impl Ds90ub954 {
                 // enable csi forwarding
                 let mut value = self.read(ti954::REG_FWD_CTL1)?;
 
-                value &= 0xEF << rx_port;
+                value &= 0xEF << rx_port.to_u32();
                 self.write(ti954::REG_FWD_CTL1, value)?;
 
                 kernel::delay::msleep(500);
@@ -1453,7 +1458,7 @@ impl Ds90ub954 {
                 let Ok(mut val) = self.read(ti954::REG_RX_PORT_CTL) else {
                     continue;
                 };
-                val &= 0xFF ^ (1 << (ti954::PORT0_EN + rx_port));
+                val &= 0xFF ^ (1 << (ti954::PORT0_EN + rx_port.to_u32()));
                 if self.write(ti954::REG_RX_PORT_CTL, val).is_err() {
                     continue;
                 }
@@ -1461,7 +1466,7 @@ impl Ds90ub954 {
                 let Ok(mut val) = self.read(ti954::REG_FWD_CTL1) else {
                     continue;
                 };
-                val |= 1 << (ti954::FWD_PORT0_DIS + rx_port);
+                val |= 1 << (ti954::FWD_PORT0_DIS + rx_port.to_u32());
                 let _ = self.write(ti954::REG_FWD_CTL1, val);
             }
         }
@@ -1509,8 +1514,62 @@ impl Ds90ub954 {
         })
     }
 
-    fn write_rx_port(&mut self, rx_port: u32, register: u32, value: u32) -> Result<()> {
-        todo!("{rx_port} {register} {value}")
+    fn read_rx_port(&mut self, rx_port: RxPort, addr: u32) -> Result<u32> {
+        let i2c_client = self.i2c_client.clone();
+        let dev = i2c_client.as_ref();
+
+        // Check if port is selected, select port if needed
+        if self.selected_rx_port != Some(rx_port) {
+            let port_reg = match rx_port {
+                RxPort::Zero => 0b1, // leave ti954::RX_READ_PORT at 0
+                RxPort::One => 0b10 | (1 << ti954::RX_READ_PORT),
+                RxPort::Both => {
+                    dev_err!(
+                        dev,
+                        "attempted to read from both rx ports at the same time\n"
+                    );
+                    0b1 // fallback to port 0
+                }
+            };
+
+            self.write(ti954::REG_FPD3_PORT_SEL, port_reg)
+                .map_err(|err| {
+                    dev_err!(dev, "error writing register ti954::REG_FPD3_PORT_SEL\n",);
+                    err
+                })?;
+
+            self.selected_rx_port = Some(rx_port);
+        }
+        self.read(addr).map_err(|err| {
+            dev_err!(dev, "error read register (0x{:02x})\n", addr);
+            err
+        })
+    }
+
+    fn write_rx_port(&mut self, rx_port: RxPort, addr: u32, value: u32) -> Result<()> {
+        let i2c_client = self.i2c_client.clone();
+        let dev = i2c_client.as_ref();
+
+        // Check if port is selected, select port if needed
+        if self.selected_rx_port != Some(rx_port) {
+            let port_reg = match rx_port {
+                RxPort::Zero => 0b01, // set RX_WRITE_PORT_0
+                RxPort::One => 0b10,  // set RX_WRITE_PORT_1
+                RxPort::Both => 0b11, // set RX_WRITE_PORT_0 & 1
+            };
+
+            self.write(ti954::REG_FPD3_PORT_SEL, port_reg)
+                .map_err(|err| {
+                    dev_err!(dev, "error writing register ti954::REG_FPD3_PORT_SEL\n",);
+                    err
+                })?;
+
+            self.selected_rx_port = Some(rx_port);
+        }
+        self.write(addr, value).map_err(|err| {
+            dev_err!(dev, "error writing register (0x{:02x})\n", addr);
+            err
+        })
     }
 
     fn init_testpattern(&mut self) -> Result<()> {
@@ -1610,7 +1669,7 @@ fn ds90ub954_parse_dt(dev: &kernel::device::Device) -> Result<Ds90ub954ParseDtRe
 struct Ds90ub953 {
     // struct i2c_client *client;
     // struct regmap *regmap;
-    rx_channel: u32,
+    rx_channel: RxPort,
     test_pattern: bool,
     i2c_address: u32,
     csi_lane_count: u32,
@@ -1658,7 +1717,7 @@ fn ds90ub953_parse_dt(dev: &kernel::device::Device) -> Result<[Option<Ds90ub953>
             val
         };
 
-        let rx_channel = get_u32(c_str!("rx-channel"), 0);
+        let rx_channel = RxPort::from(get_u32(c_str!("rx-channel"), 0), dev);
 
         let test_pattern = serializer.property_read_bool(c_str!("test-pattern"));
         if test_pattern {
@@ -1812,5 +1871,36 @@ impl Drop for Ds90ub954 {
         self.pwr_disable();
 
         pr_info!("Goodbye from DS90UB954 driver\n");
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum RxPort {
+    Zero = 0,
+    One = 1,
+    Both = 2,
+}
+
+impl RxPort {
+    fn from(value: u32, dev: &kernel::device::Device) -> RxPort {
+        match value {
+            x if x == RxPort::Zero as _ => RxPort::Zero,
+            x if x == RxPort::One as _ => RxPort::One,
+            x if x == RxPort::Both as _ => RxPort::Both,
+            _ => {
+                dev_err!(dev, "invalid rx port ({value}), fallback to 0");
+                RxPort::Zero
+            }
+        }
+    }
+
+    fn to_u32(self) -> u32 {
+        self as u32
+    }
+}
+
+impl core::fmt::Display for RxPort {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", self.to_u32())
     }
 }

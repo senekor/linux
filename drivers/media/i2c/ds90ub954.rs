@@ -760,7 +760,7 @@ mod ti954 {
 ///  Serializer registers
 #[allow(unused)]
 mod ti953 {
-    pub(crate) const REG_I2C_DEV_ID: usize = 0x00;
+    pub(crate) const REG_I2C_DEV_ID: u32 = 0x00;
     pub(crate) const SER_ID_OVERRIDE: usize = 0;
     pub(crate) const DEVICE_ID: usize = 1;
 
@@ -769,14 +769,14 @@ mod ti953 {
     pub(crate) const DIGITAL_RESET_1: usize = 1;
     pub(crate) const RESTART_AUTOLOAD: usize = 2;
 
-    pub(crate) const REG_GENERAL_CFG: usize = 0x02;
+    pub(crate) const REG_GENERAL_CFG: u32 = 0x02;
     pub(crate) const I2C_STRAP_MODE: usize = 0;
     pub(crate) const CRC_TX_GEN_ENABLE: usize = 1;
     pub(crate) const CSI_LANE_SEL: usize = 4;
     pub(crate) const CONTS_CLK: usize = 6;
-    pub(crate) const CSI_LANE_SEL1: usize = 0;
-    pub(crate) const CSI_LANE_SEL2: usize = 1;
-    pub(crate) const CSI_LANE_SEL4: usize = 3;
+    pub(crate) const CSI_LANE_SEL1: u32 = 0;
+    pub(crate) const CSI_LANE_SEL2: u32 = 1;
+    pub(crate) const CSI_LANE_SEL4: u32 = 3;
 
     pub(crate) const REG_MODE_SEL: usize = 0x03;
     pub(crate) const MODE: usize = 0;
@@ -792,7 +792,7 @@ mod ti953 {
     pub(crate) const OSCCLO_SEL: usize = 3;
     pub(crate) const CLKIN_DIV: usize = 4;
 
-    pub(crate) const REG_CLKOUT_CTRL0: usize = 0x06;
+    pub(crate) const REG_CLKOUT_CTRL0: u32 = 0x06;
     pub(crate) const DIV_M_VAL: usize = 0;
     pub(crate) const HS_CLK_DIV: usize = 5;
     pub(crate) const HS_CLK_DIV_1: usize = 0;
@@ -801,7 +801,7 @@ mod ti953 {
     pub(crate) const HS_CLK_DIV_8: usize = 3;
     pub(crate) const HS_CLK_DIV_16: usize = 4;
 
-    pub(crate) const REG_CLKOUT_CTRL1: usize = 0x07;
+    pub(crate) const REG_CLKOUT_CTRL1: u32 = 0x07;
     pub(crate) const DIV_N_VAL: usize = 0;
 
     pub(crate) const REG_BBC_WATCHDOG: usize = 0x08;
@@ -825,11 +825,11 @@ mod ti953 {
     pub(crate) const REG_SCL_LOW_TIME: usize = 0x0c;
     pub(crate) const SCL_LOW_TIME: usize = 0;
 
-    pub(crate) const REG_LOCAL_GPIO_DATA: usize = 0x0d;
+    pub(crate) const REG_LOCAL_GPIO_DATA: u32 = 0x0d;
     pub(crate) const GPIO_OUT_SRC: usize = 0;
     pub(crate) const GPIO_RMTEN: usize = 4;
 
-    pub(crate) const REG_GPIO_CTRL: usize = 0x0e;
+    pub(crate) const REG_GPIO_CTRL: u32 = 0x0e;
     pub(crate) const GPIO0_INPUT_EN: usize = 0;
     pub(crate) const GPIO1_INPUT_EN: usize = 1;
     pub(crate) const GPIO2_INPUT_EN: usize = 2;
@@ -923,7 +923,7 @@ mod ti953 {
     pub(crate) const PKT_HDR_CORRECTED: usize = 5;
     pub(crate) const PKT_HDR_SEL_VC: usize = 6;
 
-    pub(crate) const REG_BCC_CONFIG: usize = 0x32;
+    pub(crate) const REG_BCC_CONFIG: u32 = 0x32;
     pub(crate) const RX_PARITY_CHECKER_ENABLE: usize = 3;
     pub(crate) const AUTO_ACK_ALL: usize = 5;
     pub(crate) const I2C_PASS_THROUGH: usize = 6;
@@ -1079,7 +1079,7 @@ mod ti953 {
     pub(crate) const REG_IND_ACC_DATA: usize = 0xb2;
     pub(crate) const IND_ACC_DATA: usize = 0;
 
-    pub(crate) const REG_FPD3_RX_ID0: usize = 0xf0;
+    pub(crate) const REG_FPD3_RX_ID0: u32 = 0xf0;
     pub(crate) const FPD3_RX_ID0: usize = 0;
     pub(crate) const REG_FPD3_RX_ID1: usize = 0xf1;
     pub(crate) const FPD3_RX_ID1: usize = 0;
@@ -1236,6 +1236,25 @@ impl i2c::Driver for Ds90ub954 {
 
         kernel::delay::msleep(500);
 
+        // init serializers
+        for i in 0..driver_data.serializers.len() {
+            // check if serializer is initialized
+            let Some(ds90ub953) = driver_data.serializers[i].as_mut() else {
+                continue;
+            };
+            // init serializer
+            if ds90ub953.init().is_err() {
+                dev_info!(
+                    driver_data.i2c_client.as_ref(),
+                    "init serializer {i} failed\n"
+                );
+            }
+        }
+
+        kernel::delay::msleep(500);
+
+        // TODO enable sysfs tp ?
+
         pr_info!("done probing ds90ub954\n");
         Ok(driver_data.into())
     }
@@ -1322,9 +1341,14 @@ impl Ds90ub954 {
 
         // for loop goes through each serializer
         for i in 0..self.serializers.len() {
-            let Some(ds90ub953) = self.serializers[i] else {
+            // Move ownership of serializer out of `self` temporarily, letting
+            // the borrow checker track references to them independently. We
+            // need to put it back later if initialization succeeded (otherwise
+            // the remaining `None` nicely indicates failed initialization).
+            let Some(ds90ub953) = self.serializers[i].take() else {
                 continue;
             };
+
             let rx_port = ds90ub953.rx_channel;
             dev_info!(dev, "start init of serializer rx_port: {rx_port}\n");
 
@@ -1448,11 +1472,13 @@ impl Ds90ub954 {
                 Ok(())
             };
 
-            if init_serializer().is_err() {
+            if init_serializer().is_ok() {
+                // Move ownership of serializer back into `self` to indicate
+                // successful initialization.
+                self.serializers[i] = Some(ds90ub953);
+            } else {
                 dev_err!(dev, "init deserializer rx_port {rx_port} failed\n");
                 dev_err!(dev, "deserializer rx_port {rx_port} is deactivated\n");
-
-                self.serializers[i] = None;
 
                 // DISABLE RX PORT
                 let Ok(mut val) = self.read(ti954::REG_RX_PORT_CTL) else {
@@ -1665,10 +1691,9 @@ fn ds90ub954_parse_dt(dev: &kernel::device::Device) -> Result<Ds90ub954ParseDtRe
     })
 }
 
-#[derive(Debug, Clone, Copy)]
 struct Ds90ub953 {
-    // struct i2c_client *client;
-    // struct regmap *regmap;
+    i2c_client: i2c::Client,
+    regmap: regmap::Regmap,
     rx_channel: RxPort,
     test_pattern: bool,
     i2c_address: u32,
@@ -1690,7 +1715,7 @@ struct Ds90ub953 {
 }
 #[derive(Debug, Clone, Copy)]
 struct Ds90ub953GpioConfig {
-    output_enable: u32,
+    output_enable: bool,
     control: u32,
 }
 fn ds90ub953_parse_dt(dev: &kernel::device::Device) -> Result<[Option<Ds90ub953>; NUM_SERIALIZER]> {
@@ -1730,19 +1755,19 @@ fn ds90ub953_parse_dt(dev: &kernel::device::Device) -> Result<[Option<Ds90ub953>
 
         let gpio = [
             Ds90ub953GpioConfig {
-                output_enable: get_u32(c_str!("gpio0-output-enable"), 0),
+                output_enable: get_u32(c_str!("gpio0-output-enable"), 0) != 0,
                 control: get_u32(c_str!("gpio0-control"), 0b1000),
             },
             Ds90ub953GpioConfig {
-                output_enable: get_u32(c_str!("gpio1-output-enable"), 0),
+                output_enable: get_u32(c_str!("gpio1-output-enable"), 0) != 0,
                 control: get_u32(c_str!("gpio1-control"), 0b1000),
             },
             Ds90ub953GpioConfig {
-                output_enable: get_u32(c_str!("gpio2-output-enable"), 0),
+                output_enable: get_u32(c_str!("gpio2-output-enable"), 0) != 0,
                 control: get_u32(c_str!("gpio2-control"), 0b1000),
             },
             Ds90ub953GpioConfig {
-                output_enable: get_u32(c_str!("gpio3-output-enable"), 0),
+                output_enable: get_u32(c_str!("gpio3-output-enable"), 0) != 0,
                 control: get_u32(c_str!("gpio3-control"), 0b1000),
             },
         ];
@@ -1844,6 +1869,8 @@ fn ds90ub953_parse_dt(dev: &kernel::device::Device) -> Result<[Option<Ds90ub953>
         let virtual_channel_map = get_u32(c_str!("virtual-channel-map"), 0xE4);
 
         res[i] = Some(Ds90ub953 {
+            i2c_client: todo!(),
+            regmap: todo!(),
             gpio,
             rx_channel,
             test_pattern,
@@ -1863,14 +1890,129 @@ fn ds90ub953_parse_dt(dev: &kernel::device::Device) -> Result<[Option<Ds90ub953>
     Ok(res)
 }
 
+impl Ds90ub953 {
+    fn init(&mut self) -> Result<()> {
+        let i2c_client = self.i2c_client.clone();
+        let dev = i2c_client.as_ref();
+        dev_info!(dev, "start init ds90ub953\n");
+
+        let dev_id = self.read(ti953::REG_I2C_DEV_ID)?;
+
+        let mut id_code = [0; ti953::RX_ID_LENGTH];
+        for (i, byte) in id_code.iter_mut().enumerate() {
+            *byte = self.read(ti953::REG_FPD3_RX_ID0 + i as u32)? as u8;
+        }
+        let id_code = BStr::from_bytes(&id_code);
+
+        dev_info!(dev, "device ID: 0x{dev_id:x}, code: {id_code}\n");
+
+        // set to csi lanes
+        let value = match self.csi_lane_count {
+            1 => ti953::CSI_LANE_SEL1,
+            2 => ti953::CSI_LANE_SEL2,
+            _ => ti953::CSI_LANE_SEL4,
+        };
+        self.write(
+            ti953::REG_GENERAL_CFG,
+            (1 << ti953::I2C_STRAP_MODE)
+                | (1 << ti953::CRC_TX_GEN_ENABLE)
+                | (value << ti953::CSI_LANE_SEL)
+                | (if self.continuous_clock { 1 } else { 0 } << ti953::CONTS_CLK),
+        )?;
+
+        // set GPIO0 as output
+        self.write(ti953::REG_GPIO_CTRL, 0x1E)?;
+
+        // set clock output frequency
+        self.write(
+            ti953::REG_CLKOUT_CTRL0,
+            (self.hs_clk_div << ti953::HS_CLK_DIV) | (self.div_m_val << ti953::DIV_M_VAL),
+        )?;
+
+        self.write(ti953::REG_CLKOUT_CTRL1, self.div_n_val << ti953::DIV_N_VAL)?;
+
+        // setup GPIOs to input/output
+        let mut val = 0;
+        for (i, gpio) in self.gpio.iter().enumerate() {
+            if gpio.output_enable {
+                val |= 0b0001_0000 << i;
+            } else {
+                val |= 0b0000_0001 << i;
+            }
+        }
+
+        self.write(ti953::REG_GPIO_CTRL, val)?;
+
+        self.write(ti953::REG_LOCAL_GPIO_DATA, 0xf << ti953::GPIO_RMTEN)?;
+
+        self.write(
+            ti953::REG_BCC_CONFIG,
+            (0x1 << ti953::I2C_PASS_THROUGH_ALL) | (0x1 << ti953::RX_PARITY_CHECKER_ENABLE),
+        )?;
+
+        // check if test pattern should be turned on
+        if self.test_pattern {
+            dev_info!(
+                dev,
+                "serializer rx_port {} init testpattern\n",
+                self.rx_channel
+            );
+            self.init_testpattern().map_err(|err| {
+                dev_info!(
+                    dev,
+                    "serializer rx_port {} init testpattern failed\n",
+                    self.rx_channel,
+                );
+                err
+            })?;
+        }
+
+        Ok(())
+    }
+
+    fn init_testpattern(&mut self) -> Result<()> {
+        let i2c_client = self.i2c_client.clone();
+        let dev = i2c_client.as_ref();
+
+        for i in (0..DS90UB95X_TP_REG_VAL.len()).step_by(2) {
+            self.write(
+                DS90UB95X_TP_REG_VAL[i].into(),
+                DS90UB95X_TP_REG_VAL[i + 1].into(),
+            )
+            .map_err(|err| {
+                dev_info!(dev, "953: enable test pattern failed\n");
+                err
+            })?;
+        }
+        dev_info!(dev, "953: enable test pattern successful\n");
+        Ok(())
+    }
+
+    fn read(&mut self, register: u32) -> Result<u32> {
+        self.regmap.read(register).map_err(|err| {
+            dev_err!(
+                self.i2c_client.as_ref(),
+                "cannot read register 0x{register:02x} ({err:?})!\n"
+            );
+            err
+        })
+    }
+
+    fn write(&mut self, register: u32, value: u32) -> Result<()> {
+        self.regmap.write(register, value).map_err(|err| {
+            dev_err!(
+                self.i2c_client.as_ref(),
+                "cannot write register 0x{register:02x} ({err:?})!\n"
+            );
+            err
+        })
+    }
+}
+
 impl Drop for Ds90ub954 {
     fn drop(&mut self) {
-        // TODO
-        //
-        // ds90ub953_free(priv);
+        pr_info!("dropping ds90ub954\n");
         self.pwr_disable();
-
-        pr_info!("Goodbye from DS90UB954 driver\n");
     }
 }
 

@@ -1216,7 +1216,7 @@ impl i2c::Driver for Ds90ub954 {
             err
         })?;
 
-        let serializers = ds90ub953_parse_dt(dev).map_err(|err| {
+        let serializers = ds90ub953_parse_dt(client).map_err(|err| {
             dev_err!(dev, "error parsing device tree\n");
             err
         })?;
@@ -1555,6 +1555,7 @@ impl Ds90ub954 {
         })
     }
 
+    #[allow(unused, reason = "used behind #ifdef DEBUG in C driver")]
     fn read_rx_port(&mut self, rx_port: RxPort, addr: u32) -> Result<u32> {
         let i2c_client = self.i2c_client.clone();
         let dev = i2c_client.as_ref();
@@ -1732,7 +1733,9 @@ struct Ds90ub953GpioConfig {
     output_enable: bool,
     control: u32,
 }
-fn ds90ub953_parse_dt(dev: &kernel::device::Device) -> Result<[Option<Ds90ub953>; NUM_SERIALIZER]> {
+fn ds90ub953_parse_dt(i2c_client: &i2c::Client) -> Result<[Option<Ds90ub953>; NUM_SERIALIZER]> {
+    let dev = i2c_client.as_ref();
+
     let mut res = [const { None }; NUM_SERIALIZER];
 
     let Some(serializers_node) = dev.get_child_by_name(c_str!("serializers")) else {
@@ -1804,15 +1807,14 @@ fn ds90ub953_parse_dt(dev: &kernel::device::Device) -> Result<[Option<Ds90ub953>
 
         let div_m_val = get_u32(c_str!("div-m-val"), 1);
         let div_n_val = get_u32(c_str!("div-n-val"), 0x28);
+
         let i2c_address = get_u32(c_str!("i2c-address"), 0x18);
 
-        let i2c_client: i2c::Client = todo!(); // ds90ub953_i2c_client(priv, counter, val);
-
-        // if(err) {
-        //     dev_info(dev, "%s: - ds90ub953_i2c_client failed\n",
-        //          __func__);
-        //     goto next;
-        // }
+        let Some(i2c_client) = i2c::new_client_device(i2c_client.adapter(), i2c_address as u16)
+        else {
+            dev_info!(dev, "failed to add i2c client for ds90ub953\n");
+            continue;
+        };
 
         let regmap = regmap::Regmap::init_i2c(&i2c_client, &REGMAP_CONFIG).map_err(|err| {
             dev_err!(

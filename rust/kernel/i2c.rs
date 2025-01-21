@@ -248,6 +248,28 @@ impl Client {
         // embedded in `struct i2c_client`.
         unsafe { container_of!(self.0.as_raw(), bindings::i2c_client, dev) }.cast()
     }
+
+    /// Creates a new client device.
+    pub fn new_client_device(&self, addr: u16) -> Option<Client> {
+        // SAFETY: `self.as_raw()` is valid.
+        let adapter = unsafe { *self.as_raw() }.adapter;
+        // TODO: C driver used allocated the memory for the board info with
+        // `devm_kzalloc`. I don't think it is necessary, but maybe I'm wrong?
+        let board_info = bindings::i2c_board_info {
+            addr,
+            ..Default::default()
+        };
+
+        // SAFETY: `adapter` and `board_info` are valid.
+        let client = unsafe { bindings::i2c_new_client_device(adapter, &board_info) };
+        if client.is_null() {
+            return None;
+        }
+        // SAFETY: I think this is probably unsound, because the reference count
+        // for `client.dev` is never incremented. However, the device passed to
+        // `Client::from_dev` is in fact part of an i2c_client, so that's safe.
+        Some(unsafe { Client::from_dev(Device::get_device(&mut (*client).dev)) })
+    }
 }
 
 impl AsRef<Device> for Client {

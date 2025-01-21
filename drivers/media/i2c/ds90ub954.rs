@@ -5,7 +5,15 @@
 //!
 //! Datasheet: https://www.ti.com/lit/ds/symlink/ds90ub954-q1.pdf
 
-use kernel::{c_str, gpio::consumer as gpio, i2c, of, prelude::*, regmap, str::BStr};
+use kernel::{
+    c_str,
+    gpio::consumer as gpio,
+    i2c,
+    of::{self, ArrayVec},
+    prelude::*,
+    regmap,
+    str::BStr,
+};
 
 ///  Deserializer registers
 #[allow(unused)]
@@ -376,7 +384,7 @@ mod ti954 {
     pub(crate) const SER_AUTO_ACK: usize = 0;
     pub(crate) const SER_ALIAS_ID: usize = 1;
 
-    pub(crate) const REG_SLAVE_ID0: usize = 0x5d;
+    pub(crate) const REG_SLAVE_ID0: u32 = 0x5d;
     pub(crate) const SLAVE_ID0: usize = 1;
     pub(crate) const REG_SLAVE_ID1: usize = 0x5e;
     pub(crate) const SLAVE_ID1: usize = 1;
@@ -393,7 +401,7 @@ mod ti954 {
     pub(crate) const REG_SLAVE_ID7: usize = 0x64;
     pub(crate) const SLAVE_ID7: usize = 1;
 
-    pub(crate) const REG_ALIAS_ID0: usize = 0x65;
+    pub(crate) const REG_ALIAS_ID0: u32 = 0x65;
     pub(crate) const ALIAS_ID0: usize = 1;
     pub(crate) const REG_ALIAS_ID1: usize = 0x66;
     pub(crate) const ALIAS_ID1: usize = 1;
@@ -1095,6 +1103,7 @@ mod ti953 {
 }
 
 const NUM_SERIALIZER: usize = 2;
+const NUM_ALIAS: usize = 8;
 
 kernel::module_i2c_driver! {
     type: Ds90ub954,
@@ -1428,44 +1437,50 @@ impl Ds90ub954 {
                     _ => dev_info!(dev, "Successfully set ti954::REG_BC_GPIO_CTL1\n",),
                 }
 
-                // TODO: set i2c slave ids and aliases
-                // for(i=0; (i < serializer.i2c_alias_num) && (i < NUM_ALIAS); i++) {
-                // 	val = serializer.i2c_slave[i];
-                // 	if(val == 0) {
-                // 		continue;
-                // 	}
-                // 	err = ds90ub954_write_rx_port(priv, rx_port,
-                // 				      ti954::REG_SLAVE_ID0+i,
-                // 				      (val<<ti954::ALIAS_ID0));
-                // 	if(unlikely(err))
-                // 		goto ser_init_failed;
-                // 	dev_info(dev, "%s: slave id %i: 0x%X\n", __func__, i, val);
+                // set i2c slave ids and aliases
+                for (i, (&slave, &alias)) in ds90ub953
+                    .i2c_slave
+                    .as_ref()
+                    .iter()
+                    .zip(ds90ub953.i2c_alias.as_ref())
+                    .enumerate()
+                {
+                    if slave == 0 {
+                        continue;
+                    }
+                    self.write_rx_port(
+                        rx_port,
+                        ti954::REG_SLAVE_ID0 + i as u32,
+                        slave << ti954::ALIAS_ID0,
+                    )?;
+                    dev_info!(dev, "slave id {i}: 0x{slave:X}\n");
 
-                // 	val = serializer.i2c_alias[i];
-                // 	if(val == 0) {
-                // 		continue;
-                // 	}
-                // 	err = ds90ub954_write_rx_port(priv, rx_port,
-                // 				      ti954::REG_ALIAS_ID0+i,
-                // 				      (val<<ti954::ALIAS_ID0));
-                // 	if(unlikely(err))
-                // 		goto ser_init_failed;
-                // 	dev_info(dev, "%s: alias id %i: 0x%X\n", __func__, i, val);
-                // }
+                    if alias == 0 {
+                        continue;
+                    }
+                    self.write_rx_port(
+                        rx_port,
+                        ti954::REG_ALIAS_ID0 + i as u32,
+                        alias << ti954::ALIAS_ID0,
+                    )?;
+                    dev_info!(dev, "alias id {i}: 0x{alias:X}\n");
+                }
 
-                // TODO: need vc_map from devicetree first
-                //
-                // // set virtual channel id mapping
-                // self.write_rx_port(rx_port, ti954::REG_CSI_VC_MAP, ds90ub953.vc_map)?;
-                //
-                // let val = ds90ub953.vc_map & 0b11;
-                // dev_info!(dev, "VC-ID 0 mapped to {val}\n");
-                // let val = (ds90ub953.vc_map & 0b1100) >> 2;
-                // dev_info!(dev, "VC-ID 1 mapped to {val}\n");
-                // let val = (ds90ub953.vc_map & 0b110000) >> 4;
-                // dev_info!(dev, "VC-ID 2 mapped to {val}\n");
-                // let val = (ds90ub953.vc_map & 0b11000000) >> 6;
-                // dev_info!(dev, "VC-ID 3 mapped to {val}\n");
+                // set virtual channel id mapping
+                self.write_rx_port(
+                    rx_port,
+                    ti954::REG_CSI_VC_MAP,
+                    ds90ub953.virtual_channel_map,
+                )?;
+
+                let val = ds90ub953.virtual_channel_map & 0b11;
+                dev_info!(dev, "VC-ID 0 mapped to {val}\n");
+                let val = (ds90ub953.virtual_channel_map & 0b1100) >> 2;
+                dev_info!(dev, "VC-ID 1 mapped to {val}\n");
+                let val = (ds90ub953.virtual_channel_map & 0b110000) >> 4;
+                dev_info!(dev, "VC-ID 2 mapped to {val}\n");
+                let val = (ds90ub953.virtual_channel_map & 0b11000000) >> 6;
+                dev_info!(dev, "VC-ID 3 mapped to {val}\n");
 
                 // all rx_port specific registers set for rx_port X
                 dev_info!(dev, "init of deserializer rx_port {rx_port} successful\n");
@@ -1698,9 +1713,8 @@ struct Ds90ub953 {
     test_pattern: bool,
     i2c_address: u32,
     csi_lane_count: u32,
-    // int i2c_alias_num; // number of slave alias pairs
-    // int i2c_slave[NUM_ALIAS]; // array with the i2c slave addresses
-    // int i2c_alias[NUM_ALIAS]; // array with the i2c alias addresses
+    i2c_slave: ArrayVec<NUM_ALIAS, u32>, // array with the i2c slave addresses
+    i2c_alias: ArrayVec<NUM_ALIAS, u32>, // array with the i2c alias addresses
     continuous_clock: bool,
     i2c_pass_through_all: bool,
 
@@ -1792,59 +1806,56 @@ fn ds90ub953_parse_dt(dev: &kernel::device::Device) -> Result<[Option<Ds90ub953>
         let div_n_val = get_u32(c_str!("div-n-val"), 0x28);
         let i2c_address = get_u32(c_str!("i2c-address"), 0x18);
 
-        /*
-            TODO
+        let i2c_client: i2c::Client = todo!(); // ds90ub953_i2c_client(priv, counter, val);
 
-                err = ds90ub953_i2c_client(priv, counter, val);
-        if(err) {
-            dev_info(dev, "%s: - ds90ub953_i2c_client failed\n",
-                 __func__);
-            goto next;
-        }
+        // if(err) {
+        //     dev_info(dev, "%s: - ds90ub953_i2c_client failed\n",
+        //          __func__);
+        //     goto next;
+        // }
 
-        err = ds90ub953_regmap_init(priv, counter);
-        if(err) {
-            dev_info(dev, "%s: - ds90ub953_regmap_init failed\n",
-                 __func__);
-            goto next;
-        }
+        let regmap = regmap::Regmap::init_i2c(&i2c_client, &REGMAP_CONFIG).map_err(|err| {
+            dev_err!(
+                dev,
+                "regmap init of subdevice failed ({})\n",
+                err.to_errno()
+            );
+            err
+        })?;
 
-        /* get i2c-slave addresses*/
-        err = of_parse_phandle_with_args(ser, "i2c-slave", "list-cells",
-                         0, &i2c_addresses);
-        if(err) {
-            dev_info(dev, "%s: - reading i2c-slave addresses failed\n",
-                 __func__);
-            ds90ub953->i2c_alias_num = 0;
-        } else {
-            ds90ub953->i2c_alias_num = i2c_addresses.args_count;
-            /* writting i2c slave addresses into array*/
-            for(i = 0; (i < i2c_addresses.args_count) &&
-                            (i<NUM_ALIAS) ; i++) {
-                ds90ub953->i2c_slave[i] = i2c_addresses.args[i];
+        // get i2c-slave addresse
+        let i2c_slave = match serializer.parse_phandle_with_args(
+            c_str!("i2c-slave"),
+            c_str!("list-cells"),
+            0,
+        ) {
+            Err(_) => {
+                dev_info!(dev, "reading i2c-slave addresses failed\n");
+                ArrayVec::default()
             }
-        }
+            Ok((_, i2c_addresses)) => i2c_addresses.truncated::<NUM_ALIAS>(),
+        };
 
-        /* get slave-aliases */
-        err = of_parse_phandle_with_args(ser, "slave-alias",
-                         "list-cells", 0, &i2c_addresses);
-        if(err) {
-            dev_info(dev, "%s: - reading i2c slave-alias addresses failed\n",
-                 __func__);
-            ds90ub953->i2c_alias_num = 0;
-        } else {
-            dev_info(dev, "%s: - num of slave alias pairs: %i\n",
-                 __func__, i2c_addresses.args_count);
-            /* writting i2c alias addresses into array*/
-            for(i=0; (i<i2c_addresses.args_count) && (i<NUM_ALIAS);
-                i++) {
-                ds90ub953->i2c_alias[i] = i2c_addresses.args[i];
-                dev_info(dev, "%s: - slave addr: 0x%X, alias addr: 0x%X\n",
-                     __func__, ds90ub953->i2c_slave[i],
-                     ds90ub953->i2c_alias[i]);
+        // get slave-aliases
+        let i2c_alias = match serializer.parse_phandle_with_args(
+            c_str!("slave-alias"),
+            c_str!("list-cells"),
+            0,
+        ) {
+            Err(_) => {
+                dev_info!(dev, "reading i2c slave-alias addresses failed\n");
+                ArrayVec::default()
             }
+            Ok((_, i2c_addresses)) => {
+                // TODO what if the two lengths are not equal?
+                dev_info!(dev, "num of slave alias pairs: {}\n", i2c_addresses.len());
+                i2c_addresses.truncated::<NUM_ALIAS>()
+            }
+        };
+
+        for (slave, alias) in i2c_slave.as_ref().iter().zip(i2c_alias.as_ref()) {
+            dev_info!(dev, "slave addr: 0x{slave:X}, alias addr: 0x{alias:X}\n",);
         }
-        */
 
         let continuous_clock = serializer.property_read_bool(c_str!("continuous-clock"));
         if continuous_clock {
@@ -1863,12 +1874,14 @@ fn ds90ub953_parse_dt(dev: &kernel::device::Device) -> Result<[Option<Ds90ub953>
         let virtual_channel_map = get_u32(c_str!("virtual-channel-map"), 0xE4);
 
         res[i] = Some(Ds90ub953 {
-            i2c_client: todo!(),
-            regmap: todo!(),
+            i2c_client,
+            regmap,
             gpio,
             rx_channel,
             test_pattern,
             csi_lane_count,
+            i2c_slave,
+            i2c_alias,
             hs_clk_div,
             i2c_address,
             continuous_clock,

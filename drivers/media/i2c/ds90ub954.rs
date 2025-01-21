@@ -1719,25 +1719,19 @@ struct Ds90ub953GpioConfig {
     control: u32,
 }
 fn ds90ub953_parse_dt(dev: &kernel::device::Device) -> Result<[Option<Ds90ub953>; NUM_SERIALIZER]> {
-    // TODO: This function body is pseudo-code.
-    // There isn't yet a Rust abstraction for parsing nested device tree nodes.
-
-    dev_warn!(dev, "ds90ub953_parse_dt is not yet implemented\n");
-
     let mut res = [const { None }; NUM_SERIALIZER];
 
-    // TODO: needs Rust abstraction for iterating over devicetree nodes
-    // let serializers = of_get_child_by_name(des, "serializers");
-    for i in 0..NUM_SERIALIZER {
-        let serializer = dev; // FIXME
+    let Some(serializers_node) = dev.get_child_by_name(c_str!("serializers")) else {
+        dev_info!(dev, "no serializers found in device tree\n");
+        return Err(ENOENT);
+    };
 
+    for (i, serializer) in serializers_node.children().enumerate().take(NUM_SERIALIZER) {
         let get_u32 = |prop, default| {
-            let val = serializer
-                .property_read::<u32>(prop, None)
-                .unwrap_or_else(|_| {
-                    dev_info!(dev, "{prop} property not found, set to default value\n");
-                    default
-                });
+            let val = serializer.property_read_u32(prop).unwrap_or_else(|_| {
+                dev_info!(dev, "{prop} property not found, set to default value\n");
+                default
+            });
             dev_info!(dev, "{prop}: {val}\n");
             val
         };
@@ -1773,7 +1767,7 @@ fn ds90ub953_parse_dt(dev: &kernel::device::Device) -> Result<[Option<Ds90ub953>
         ];
 
         let hs_clk_div_default = 0b010; // div by 4
-        let hs_clk_div = match serializer.property_read::<u32>(c_str!("hs-clk-div"), None) {
+        let hs_clk_div = match serializer.property_read_u32(c_str!("hs-clk-div")) {
             Ok(1) => 0b000,
             Ok(2) => 0b001,
             Ok(4) => 0b010,

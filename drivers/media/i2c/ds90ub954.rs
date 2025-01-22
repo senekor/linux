@@ -1166,18 +1166,20 @@ static DS90UB95X_TP_REG_VAL: [u8; 62] = [
 
 struct Ds90ub954 {
     i2c_client: i2c::Client,
-    pass_gpio: Option<gpio::Desc>,
-    lock_gpio: Option<gpio::Desc>,
+    // We store the GPIO descriptors here so gpiod_put is called when the driver
+    // is removed.
+    _pass_gpio: Option<gpio::Desc>,
+    _lock_gpio: Option<gpio::Desc>,
     pdb_gpio: Option<gpio::Desc>,
     regmap: regmap::Regmap,
     serializers: [Option<Ds90ub953>; NUM_SERIALIZER],
     selected_rx_port: Option<RxPort>,
-    selected_ia_config: Option<u32>,
+    // This is used in the original C driver for some debugging code
+    _selected_ia_config: Option<u32>,
     csi_lane_count: u32,
     csi_lane_speed: u32,
     test_pattern: bool,
-    // int num_ser; // number of serializers connected
-    continuous_clock: bool, // continuous clock (0: discontinuous, 1: continuous)
+    continuous_clock: bool,
 }
 
 impl i2c::Driver for Ds90ub954 {
@@ -1223,13 +1225,13 @@ impl i2c::Driver for Ds90ub954 {
 
         let driver_data = Self {
             i2c_client: client.clone(),
-            pass_gpio,
-            lock_gpio,
+            _pass_gpio: pass_gpio,
+            _lock_gpio: lock_gpio,
             pdb_gpio,
             regmap,
             serializers,
             selected_rx_port,
-            selected_ia_config,
+            _selected_ia_config: selected_ia_config,
             csi_lane_count,
             csi_lane_speed,
             test_pattern,

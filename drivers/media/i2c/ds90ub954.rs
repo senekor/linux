@@ -649,52 +649,52 @@ mod ti954 {
     // Indirect Register Map Description
     pub(crate) const REG_IA_PATTERN_GEN_PAGE_BLOCK_SELECT: usize = 0x0;
 
-    pub(crate) const REG_IA_PGEN_CTL: u8 = 0x01;
+    pub(crate) const REG_IA_PGEN_CTL: u32 = 0x01;
     pub(crate) const PGEB_ENABLE: u8 = 0;
 
-    pub(crate) const REG_IA_PGEB_CFG: u8 = 0x02;
+    pub(crate) const REG_IA_PGEB_CFG: u32 = 0x02;
     pub(crate) const BLOCK_SIZE: usize = 0;
     pub(crate) const NUM_CBARS: usize = 4;
     pub(crate) const PGEN_FIXED_EN: usize = 7;
 
-    pub(crate) const REG_IA_PGEN_CSI_DI: u8 = 0x03;
+    pub(crate) const REG_IA_PGEN_CSI_DI: u32 = 0x03;
     pub(crate) const PGEN_CSI_DT: usize = 0;
     pub(crate) const PGEN_CSI_VC: usize = 6;
 
-    pub(crate) const REG_IA_PGEN_LINE_SIZE1: u8 = 0x04;
+    pub(crate) const REG_IA_PGEN_LINE_SIZE1: u32 = 0x04;
     pub(crate) const PGEN_LINE_SIZE1: usize = 0;
 
-    pub(crate) const REG_IA_PGEN_LINE_SIZE0: u8 = 0x05;
+    pub(crate) const REG_IA_PGEN_LINE_SIZE0: u32 = 0x05;
     pub(crate) const PGEN_LINE_SIZE0: usize = 0;
 
-    pub(crate) const REG_IA_PGEN_BAR_SIZE1: u8 = 0x06;
+    pub(crate) const REG_IA_PGEN_BAR_SIZE1: u32 = 0x06;
     pub(crate) const PGEN_BAR_SIZE1: usize = 0;
 
-    pub(crate) const REG_IA_PGEN_BAR_SIZE0: u8 = 0x07;
+    pub(crate) const REG_IA_PGEN_BAR_SIZE0: u32 = 0x07;
     pub(crate) const PGEN_BAR_SIZE0: usize = 0;
 
-    pub(crate) const REG_IA_PGEN_ACT_LPF1: u8 = 0x08;
+    pub(crate) const REG_IA_PGEN_ACT_LPF1: u32 = 0x08;
     pub(crate) const PGEN_ACT_LPF1: usize = 0;
 
-    pub(crate) const REG_IA_PGEN_ACT_LPF0: u8 = 0x09;
+    pub(crate) const REG_IA_PGEN_ACT_LPF0: u32 = 0x09;
     pub(crate) const PGEN_ACT_LPF0: usize = 0;
 
-    pub(crate) const REG_IA_PGEN_TOT_LPF1: u8 = 0x0a;
+    pub(crate) const REG_IA_PGEN_TOT_LPF1: u32 = 0x0a;
     pub(crate) const PGEN_TOT_LPF1: usize = 0;
 
-    pub(crate) const REG_IA_PGEN_TOT_LPF0: u8 = 0x0b;
+    pub(crate) const REG_IA_PGEN_TOT_LPF0: u32 = 0x0b;
     pub(crate) const PGEN_TOT_LPF0: usize = 0;
 
-    pub(crate) const REG_IA_PGEN_LINE_PD1: u8 = 0x0c;
+    pub(crate) const REG_IA_PGEN_LINE_PD1: u32 = 0x0c;
     pub(crate) const PGEN_LINE_PD1: usize = 0;
 
-    pub(crate) const REG_IA_PGEN_LINE_PD0: u8 = 0x0d;
+    pub(crate) const REG_IA_PGEN_LINE_PD0: u32 = 0x0d;
     pub(crate) const PGEN_LINE_PD0: usize = 0;
 
-    pub(crate) const REG_IA_PGEN_VBP: u8 = 0x0e;
+    pub(crate) const REG_IA_PGEN_VBP: u32 = 0x0e;
     pub(crate) const PGEN_VBP: usize = 0;
 
-    pub(crate) const REG_IA_PGEN_VFP: u8 = 0x0f;
+    pub(crate) const REG_IA_PGEN_VFP: u32 = 0x0f;
     pub(crate) const PGEN_VFP: usize = 0;
 
     pub(crate) const REG_IA_PGEN_COLOR0: usize = 0x10;
@@ -1128,40 +1128,39 @@ kernel::of_device_table!(
 
 const REGMAP_CONFIG: regmap::Config = regmap::Config::new(8, 8);
 
-#[rustfmt::skip]
-static DS90UB95X_TP_REG_VAL: [u8; 62] = [
-	// Indirect Pattern Gen Registers
-	0xB0, 0x00,
-	0xB1, ti954::REG_IA_PGEN_CTL,
-	0xB2, (1<<ti954::PGEB_ENABLE),
-	0xB1, ti954::REG_IA_PGEB_CFG,
-	0xB2, 0x35,
-	0xB1, ti954::REG_IA_PGEN_CSI_DI,
-	0xB2, 0x2B,
-	0xB1, ti954::REG_IA_PGEN_LINE_SIZE1,
-	0xB2, 0x14,
-	0xB1, ti954::REG_IA_PGEN_LINE_SIZE0,
-	0xB2, 0x00,
-	0xB1, ti954::REG_IA_PGEN_BAR_SIZE1,
-	0xB2, 0x02,
-	0xB1, ti954::REG_IA_PGEN_BAR_SIZE0,
-	0xB2, 0x80,
-	0xB1, ti954::REG_IA_PGEN_ACT_LPF1,
-	0xB2, 0x08,
-	0xB1, ti954::REG_IA_PGEN_ACT_LPF0,
-	0xB2, 0x70,
-	0xB1, ti954::REG_IA_PGEN_TOT_LPF1,
-	0xB2, 0x08,
-	0xB1, ti954::REG_IA_PGEN_TOT_LPF0,
-	0xB2, 0x70,
-	0xB1, ti954::REG_IA_PGEN_LINE_PD1,
-	0xB2, 0x0B,
-	0xB1, ti954::REG_IA_PGEN_LINE_PD0,
-	0xB2, 0x93,
-	0xB1, ti954::REG_IA_PGEN_VBP,
-	0xB2, 0x21,
-	0xB1, ti954::REG_IA_PGEN_VFP,
-	0xB2, 0x0A,
+static DS90UB95X_TP_REG_VAL: [(u32, u32); 31] = [
+    // Indirect Pattern Gen Registers
+    (0xB0, 0x00),
+    (0xB1, ti954::REG_IA_PGEN_CTL),
+    (0xB2, (1 << ti954::PGEB_ENABLE)),
+    (0xB1, ti954::REG_IA_PGEB_CFG),
+    (0xB2, 0x35),
+    (0xB1, ti954::REG_IA_PGEN_CSI_DI),
+    (0xB2, 0x2B),
+    (0xB1, ti954::REG_IA_PGEN_LINE_SIZE1),
+    (0xB2, 0x14),
+    (0xB1, ti954::REG_IA_PGEN_LINE_SIZE0),
+    (0xB2, 0x00),
+    (0xB1, ti954::REG_IA_PGEN_BAR_SIZE1),
+    (0xB2, 0x02),
+    (0xB1, ti954::REG_IA_PGEN_BAR_SIZE0),
+    (0xB2, 0x80),
+    (0xB1, ti954::REG_IA_PGEN_ACT_LPF1),
+    (0xB2, 0x08),
+    (0xB1, ti954::REG_IA_PGEN_ACT_LPF0),
+    (0xB2, 0x70),
+    (0xB1, ti954::REG_IA_PGEN_TOT_LPF1),
+    (0xB2, 0x08),
+    (0xB1, ti954::REG_IA_PGEN_TOT_LPF0),
+    (0xB2, 0x70),
+    (0xB1, ti954::REG_IA_PGEN_LINE_PD1),
+    (0xB2, 0x0B),
+    (0xB1, ti954::REG_IA_PGEN_LINE_PD0),
+    (0xB2, 0x93),
+    (0xB1, ti954::REG_IA_PGEN_VBP),
+    (0xB2, 0x21),
+    (0xB1, ti954::REG_IA_PGEN_VFP),
+    (0xB2, 0x0A),
 ];
 
 struct Ds90ub954 {
@@ -1617,12 +1616,8 @@ impl Ds90ub954 {
     }
 
     fn init_testpattern(&mut self) -> Result<()> {
-        for i in (0..DS90UB95X_TP_REG_VAL.len()).step_by(2) {
-            self.write(
-                DS90UB95X_TP_REG_VAL[i].into(),
-                DS90UB95X_TP_REG_VAL[i + 1].into(),
-            )
-            .map_err(|err| {
+        for (reg, val) in DS90UB95X_TP_REG_VAL {
+            self.write(reg, val).map_err(|err| {
                 dev_info!(
                     self.i2c_client.as_ref(),
                     "954: enable test pattern failed\n"
@@ -1985,12 +1980,8 @@ impl Ds90ub953 {
         let i2c_client = self.i2c_client.clone();
         let dev = i2c_client.as_ref();
 
-        for i in (0..DS90UB95X_TP_REG_VAL.len()).step_by(2) {
-            self.write(
-                DS90UB95X_TP_REG_VAL[i].into(),
-                DS90UB95X_TP_REG_VAL[i + 1].into(),
-            )
-            .map_err(|err| {
+        for (reg, val) in DS90UB95X_TP_REG_VAL {
+            self.write(reg, val).map_err(|err| {
                 dev_info!(dev, "953: enable test pattern failed\n");
                 err
             })?;

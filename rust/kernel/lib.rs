@@ -48,6 +48,7 @@ pub mod error;
 #[cfg(CONFIG_RUST_FW_LOADER_ABSTRACTIONS)]
 pub mod firmware;
 pub mod fs;
+pub mod fwnode;
 #[cfg(CONFIG_I2C)]
 pub mod i2c;
 pub mod init;

@@ -6,12 +6,7 @@
 //! Datasheet: https://www.ti.com/lit/ds/symlink/ds90ub954-q1.pdf
 
 use kernel::{
-    c_str,
-    gpio::consumer as gpio,
-    i2c,
-    of::{self, ArrayVec},
-    prelude::*,
-    regmap,
+    arrayvec::ArrayVec, c_str, fwnode, gpio::consumer as gpio, i2c, of, prelude::*, regmap,
     str::BStr,
 };
 
@@ -1446,6 +1441,7 @@ impl Ds90ub954 {
                     .zip(ds90ub953.i2c_alias.as_ref())
                     .enumerate()
                 {
+                    let (slave, alias) = (slave as u32, alias as u32);
                     if slave == 0 {
                         continue;
                     }
@@ -1657,7 +1653,9 @@ fn ds90ub954_parse_dt(dev: &kernel::device::Device) -> Result<Ds90ub954ParseDtRe
     let lock_gpio = try_get_gpio(c_str!("lock"), gpio::Flags::In)?;
     let pdb_gpio = try_get_gpio(c_str!("pdb"), gpio::Flags::OutLow)?;
 
-    let csi_lane_count = dev
+    let fwnode = dev.as_fwnode();
+
+    let csi_lane_count = fwnode
         .property_read::<u32>(c_str!("csi-lane-count"), None)
         .unwrap_or_else(|_| {
             dev_info!(
@@ -1668,7 +1666,7 @@ fn ds90ub954_parse_dt(dev: &kernel::device::Device) -> Result<Ds90ub954ParseDtRe
         });
     dev_info!(dev, "csi-lane-count: {csi_lane_count}\n");
 
-    let csi_lane_speed = dev
+    let csi_lane_speed = fwnode
         .property_read::<u32>(c_str!("csi-lane-speed"), None)
         .unwrap_or_else(|_| {
             dev_info!(
@@ -1679,14 +1677,14 @@ fn ds90ub954_parse_dt(dev: &kernel::device::Device) -> Result<Ds90ub954ParseDtRe
         });
     dev_info!(dev, "csi-lane-speed: {csi_lane_speed}\n");
 
-    let test_pattern = dev.property_read_bool(c_str!("test-pattern"));
+    let test_pattern = fwnode.property_read_bool(c_str!("test-pattern"));
     if test_pattern {
         dev_info!(dev, "test-pattern enabled\n");
     } else {
         dev_info!(dev, "test-pattern disabled\n");
     }
 
-    let continuous_clock = dev.property_read_bool(c_str!("continuous-clock"));
+    let continuous_clock = fwnode.property_read_bool(c_str!("continuous-clock"));
     if continuous_clock {
         dev_info!(dev, "continuous clock enabled\n");
     } else {
@@ -1711,8 +1709,8 @@ struct Ds90ub953 {
     test_pattern: bool,
     i2c_address: u32,
     csi_lane_count: u32,
-    i2c_slave: ArrayVec<NUM_ALIAS, u32>, // array with the i2c slave addresses
-    i2c_alias: ArrayVec<NUM_ALIAS, u32>, // array with the i2c alias addresses
+    i2c_slave: ArrayVec<NUM_ALIAS, u64>, // array with the i2c slave addresses
+    i2c_alias: ArrayVec<NUM_ALIAS, u64>, // array with the i2c alias addresses
     continuous_clock: bool,
     i2c_pass_through_all: bool,
 
@@ -1735,17 +1733,19 @@ fn ds90ub953_parse_dt(i2c_client: &i2c::Client) -> Result<[Option<Ds90ub953>; NU
 
     let mut res = [const { None }; NUM_SERIALIZER];
 
-    let Some(serializers_node) = dev.get_child_by_name(c_str!("serializers")) else {
+    let Some(serializers_node) = dev.as_fwnode().get_child_by_name(c_str!("serializers")) else {
         dev_info!(dev, "no serializers found in device tree\n");
         return Err(ENOENT);
     };
 
     for (i, serializer) in serializers_node.children().enumerate().take(NUM_SERIALIZER) {
         let get_u32 = |prop, default| {
-            let val = serializer.property_read_u32(prop).unwrap_or_else(|_| {
-                dev_info!(dev, "{prop} property not found, set to default value\n");
-                default
-            });
+            let val = serializer
+                .property_read::<u32>(prop, None)
+                .unwrap_or_else(|_| {
+                    dev_info!(dev, "{prop} property not found, set to default value\n");
+                    default
+                });
             dev_info!(dev, "{prop}: {val}\n");
             val
         };
@@ -1781,7 +1781,7 @@ fn ds90ub953_parse_dt(i2c_client: &i2c::Client) -> Result<[Option<Ds90ub953>; NU
         ];
 
         let hs_clk_div_default = 0b010; // div by 4
-        let hs_clk_div = match serializer.property_read_u32(c_str!("hs-clk-div")) {
+        let hs_clk_div = match serializer.property_read::<u32>(c_str!("hs-clk-div"), None) {
             Ok(1) => 0b000,
             Ok(2) => 0b001,
             Ok(4) => 0b010,
@@ -1807,8 +1807,7 @@ fn ds90ub953_parse_dt(i2c_client: &i2c::Client) -> Result<[Option<Ds90ub953>; NU
 
         let i2c_address = get_u32(c_str!("i2c-address"), 0x18);
 
-        let Some(i2c_client) = i2c::new_client_device(i2c_client.adapter(), i2c_address as u16)
-        else {
+        let Some(i2c_client) = i2c_client.new_client_device(i2c_address as u16) else {
             dev_info!(dev, "failed to add i2c client for ds90ub953\n");
             continue;
         };
@@ -1823,22 +1822,22 @@ fn ds90ub953_parse_dt(i2c_client: &i2c::Client) -> Result<[Option<Ds90ub953>; NU
         })?;
 
         // get i2c-slave addresse
-        let i2c_slave = match serializer.parse_phandle_with_args(
+        let i2c_slave = match serializer.property_get_reference_args(
             c_str!("i2c-slave"),
-            c_str!("list-cells"),
+            fwnode::NArgs::Prop(c_str!("list-cells")),
             0,
         ) {
             Err(_) => {
                 dev_info!(dev, "reading i2c-slave addresses failed\n");
                 ArrayVec::default()
             }
-            Ok((_, i2c_addresses)) => i2c_addresses.truncated::<NUM_ALIAS>(),
+            Ok((_, i2c_addresses)) => i2c_addresses,
         };
 
         // get slave-aliases
-        let i2c_alias = match serializer.parse_phandle_with_args(
+        let i2c_alias = match serializer.property_get_reference_args(
             c_str!("slave-alias"),
-            c_str!("list-cells"),
+            fwnode::NArgs::Prop(c_str!("list-cells")),
             0,
         ) {
             Err(_) => {
@@ -1848,7 +1847,7 @@ fn ds90ub953_parse_dt(i2c_client: &i2c::Client) -> Result<[Option<Ds90ub953>; NU
             Ok((_, i2c_addresses)) => {
                 // TODO what if the two lengths are not equal?
                 dev_info!(dev, "num of slave alias pairs: {}\n", i2c_addresses.len());
-                i2c_addresses.truncated::<NUM_ALIAS>()
+                i2c_addresses
             }
         };
 

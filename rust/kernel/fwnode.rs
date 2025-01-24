@@ -10,12 +10,12 @@ use crate::{
     error::{to_result, Result},
     prelude::*,
     str::{CStr, CString},
-    types::{Integer, Opaque},
+    types::{ARef, Integer, Opaque},
 };
 use core::{
     ffi::c_void,
     mem::{self, MaybeUninit},
-    ptr,
+    ptr::{self, NonNull},
 };
 
 /// A reference-counted fwnode_handle.
@@ -170,6 +170,62 @@ impl FwNode {
         };
         to_result(ret)?;
         Ok(ret.try_into().unwrap())
+    }
+
+    // SAFETY: `raw` must have its refcount incremented.
+    unsafe fn from_raw(raw: *mut bindings::fwnode_handle) -> ARef<Self> {
+        unsafe { ARef::from_raw(NonNull::new_unchecked(raw.cast())) }
+    }
+
+    pub fn get_child_by_name(&self, name: &CStr) -> Option<ARef<Self>> {
+        // SAFETY: `self` and `name` are valid.
+        let child =
+            unsafe { bindings::fwnode_get_named_child_node(self.as_raw(), name.as_char_ptr()) };
+        if child.is_null() {
+            return None;
+        }
+        // SAFETY: `fwnode_get_named_child_node` returns a pointer with refcount incremented.
+        Some(unsafe { Self::from_raw(child) })
+    }
+
+    pub fn children<'a>(&'a self) -> impl Iterator<Item = ARef<FwNode>> + 'a {
+        struct Children<'a> {
+            parent: &'a FwNode,
+            prev: Option<ARef<FwNode>>,
+        }
+
+        impl<'a> Iterator for Children<'a> {
+            type Item = ARef<FwNode>;
+
+            fn next(&mut self) -> Option<Self::Item> {
+                let prev = match self.prev.take() {
+                    None => core::ptr::null_mut(),
+                    Some(prev) => {
+                        // We will pass `prev` to `fwnode_get_next_child_node`,
+                        // which decrements its refcount, so we use
+                        // `ARef::into_raw` to avoid decrementing the refcount
+                        // twice.
+                        let prev = ARef::into_raw(prev);
+                        prev.as_ptr().cast()
+                    }
+                };
+                let next =
+                    unsafe { bindings::fwnode_get_next_child_node(self.parent.as_raw(), prev) };
+                if next.is_null() {
+                    return None;
+                }
+                // SAFETY: `fwnode_get_next_child_node` returns a pointer with
+                // refcount incremented.
+                let next = unsafe { FwNode::from_raw(next) };
+                self.prev = Some(next.clone());
+                Some(next)
+            }
+        }
+
+        Children {
+            parent: self,
+            prev: None,
+        }
     }
 }
 

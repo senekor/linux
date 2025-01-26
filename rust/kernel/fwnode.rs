@@ -6,6 +6,7 @@
 
 use crate::{
     alloc::KVec,
+    arrayvec::ArrayVec,
     bindings,
     error::{to_result, Result},
     prelude::*,
@@ -227,6 +228,49 @@ impl FwNode {
             prev: None,
         }
     }
+
+    pub fn property_get_reference_args(
+        &self,
+        prop: &CStr,
+        nargs: NArgs<'_>,
+        index: u32,
+    ) -> Result<(
+        ARef<Self>,
+        ArrayVec<{ bindings::NR_FWNODE_REFERENCE_ARGS as usize }, u64>,
+    )> {
+        let mut out_args = bindings::fwnode_reference_args::default();
+
+        let (nargs_prop, nargs) = match nargs {
+            NArgs::Prop(nargs_prop) => (nargs_prop.as_char_ptr(), 0),
+            NArgs::N(nargs) => (ptr::null(), nargs),
+        };
+
+        let ret = unsafe {
+            bindings::fwnode_property_get_reference_args(
+                self.0.get(),
+                prop.as_char_ptr(),
+                nargs_prop,
+                nargs,
+                index,
+                &mut out_args,
+            )
+        };
+        to_result(ret)?;
+
+        let node = unsafe { FwNode::from_raw(out_args.fwnode) };
+        let mut args = ArrayVec::default();
+
+        for i in 0..out_args.nargs {
+            args.push(out_args.args[i as usize]);
+        }
+
+        Ok((node, args))
+    }
+}
+
+pub enum NArgs<'a> {
+    Prop(&'a CStr),
+    N(u32),
 }
 
 // SAFETY: Instances of `FwNode` are always reference-counted.

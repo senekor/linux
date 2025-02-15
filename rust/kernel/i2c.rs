@@ -232,6 +232,20 @@ impl Client {
         // embedded in `struct i2c_client`.
         unsafe { container_of!(self.0.as_raw(), bindings::i2c_client, dev) }.cast_mut()
     }
+
+    pub fn new_client_device(&self, addr: u16) -> Option<Client> {
+        let adapter = unsafe { *self.as_raw() }.adapter;
+        // TODO: C driver used allocated the memory for the board info with
+        // `devm_kzalloc`. I don't think it is necessary, but maybe I'm wrong?
+        let mut board_info = bindings::i2c_board_info::default();
+        board_info.addr = addr;
+
+        let client = unsafe { bindings::i2c_new_client_device(adapter, &board_info) };
+        if client.is_null() {
+            return None;
+        }
+        Some(unsafe { Client::from_dev(Device::get_device(&mut (*client).dev)) })
+    }
 }
 
 impl AsRef<Device> for Client {

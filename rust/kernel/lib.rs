@@ -35,6 +35,7 @@ extern crate self as kernel;
 pub use ffi;
 
 pub mod alloc;
+pub mod arrayvec;
 pub mod bits;
 #[cfg(CONFIG_BLOCK)]
 pub mod block;

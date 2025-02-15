@@ -66,6 +66,8 @@ int fwnode_property_read_u32_array(const struct fwnode_handle *fwnode,
 int fwnode_property_read_u64_array(const struct fwnode_handle *fwnode,
 				   const char *propname, u64 *val,
 				   size_t nval);
+int fwnode_property_read_int_array(const struct fwnode_handle *fwnode, const char *propname,
+				   unsigned int elem_size, void *val, size_t nval);
 int fwnode_property_read_string_array(const struct fwnode_handle *fwnode,
 				      const char *propname, const char **val,
 				      size_t nval);

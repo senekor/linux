@@ -254,10 +254,10 @@ int device_property_match_string(const struct device *dev, const char *propname,
 }
 EXPORT_SYMBOL_GPL(device_property_match_string);
 
-static int fwnode_property_read_int_array(const struct fwnode_handle *fwnode,
-					  const char *propname,
-					  unsigned int elem_size, void *val,
-					  size_t nval)
+int fwnode_property_read_int_array(const struct fwnode_handle *fwnode,
+				   const char *propname,
+				   unsigned int elem_size, void *val,
+				   size_t nval)
 {
 	int ret;
 
@@ -272,6 +272,7 @@ static int fwnode_property_read_int_array(const struct fwnode_handle *fwnode,
 	return fwnode_call_int_op(fwnode->secondary, property_read_int_array, propname,
 				  elem_size, val, nval);
 }
+EXPORT_SYMBOL_GPL(fwnode_property_read_int_array);
 
 /**
  * fwnode_property_read_u8_array - return a u8 array property of firmware node

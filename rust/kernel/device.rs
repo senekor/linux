@@ -6,6 +6,7 @@
 
 use crate::{
     bindings,
+    fwnode::FwNode,
     types::{ARef, Opaque},
 };
 use core::{fmt, ptr};
@@ -179,6 +180,19 @@ impl Device {
                 &msg as *const _ as *const crate::ffi::c_void,
             )
         };
+    }
+
+    /// Optain the fwnode corresponding to the device.
+    pub fn as_fwnode(&self) -> &FwNode {
+        // SAFETY: `self` is valid.
+        let fwnode_handle = unsafe { bindings::dev_fwnode(self.as_raw()) };
+        if fwnode_handle.is_null() {
+            panic!("fwnode_handle cannot be null");
+        }
+        // SAFETY: `fwnode_handle` is valid. Its lifetime is tied to `&self`. We
+        // return a reference instead of an `ARef<FwNode>` because `dev_fwnode()`
+        // doesn't increment the refcount.
+        unsafe { &*fwnode_handle.cast() }
     }
 }
 

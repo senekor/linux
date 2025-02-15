@@ -35,6 +35,7 @@ extern crate self as kernel;
 pub use ffi;
 
 pub mod alloc;
+pub mod arrayvec;
 pub mod bits;
 #[cfg(CONFIG_BLOCK)]
 pub mod block;
@@ -49,6 +50,7 @@ pub mod error;
 #[cfg(CONFIG_RUST_FW_LOADER_ABSTRACTIONS)]
 pub mod firmware;
 pub mod fs;
+pub mod fwnode;
 #[cfg(CONFIG_GPIOLIB)]
 pub mod gpio;
 #[cfg(CONFIG_I2C)]

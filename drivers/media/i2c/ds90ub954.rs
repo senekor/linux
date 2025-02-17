@@ -5,6 +5,16 @@
 //!
 //! Datasheet: https://www.ti.com/lit/ds/symlink/ds90ub954-q1.pdf
 
+/* ------------------------------------------------------------------
+ * --  _____       ______  _____                                    -
+ * -- |_   _|     |  ____|/ ____|                                   -
+ * --   | |  _ __ | |__  | (___    Institute of Embedded Systems    -
+ * --   | | | '_ \|  __|  \___ \   Zurich University of             -
+ * --  _| |_| | | | |____ ____) |  Applied Sciences                 -
+ * -- |_____|_| |_|______|_____/   8401 Winterthur, Switzerland     -
+ * ------------------------------------------------------------------
+ */
+
 use kernel::{
     arrayvec::ArrayVec, c_str, fwnode, gpio::consumer as gpio, i2c, of, prelude::*, regmap,
     str::BStr,

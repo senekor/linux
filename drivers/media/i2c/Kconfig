@@ -1639,6 +1639,13 @@ config VIDEO_DS90UB953
 	  Device driver for the Texas Instruments DS90UB953
 	  FPD-Link III Serializer and DS90UB971 FPD-Link IV Serializer.
 
+config VIDEO_DS90UB954
+	tristate "TI FPD-Link III Deserializers"
+	depends on I2C && RUST
+	help
+	  Device driver for the Texas Instruments DS90UB954
+	  FPD-Link III Deserializer.
+
 config VIDEO_DS90UB960
 	tristate "TI FPD-Link III/IV Deserializers"
 	depends on OF && I2C && VIDEO_DEV && COMMON_CLK

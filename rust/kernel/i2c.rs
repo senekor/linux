@@ -64,10 +64,12 @@ pub type IdTable<T> = &'static dyn device_id::IdTable<DeviceId, T>;
 #[doc(hidden)]
 pub struct Adapter<T: Driver + 'static>(T);
 
-impl<T: Driver + 'static> driver::RegistrationOps for Adapter<T> {
+// SAFETY: TODO
+unsafe impl<T: Driver + 'static> driver::RegistrationOps for Adapter<T> {
     type RegType = bindings::i2c_driver;
 
-    fn register(
+    // SAFETY: TODO
+    unsafe fn register(
         i2cdrv: &Opaque<Self::RegType>,
         name: &'static CStr,
         module: &'static ThisModule,
@@ -89,7 +91,7 @@ impl<T: Driver + 'static> driver::RegistrationOps for Adapter<T> {
         to_result(unsafe { bindings::i2c_register_driver(module.0, i2cdrv.get()) })
     }
 
-    fn unregister(i2cdrv: &Opaque<Self::RegType>) {
+    unsafe fn unregister(i2cdrv: &Opaque<Self::RegType>) {
         // SAFETY: `i2cdrv` is guaranteed to be a valid `RegType`.
         unsafe { bindings::i2c_del_driver(i2cdrv.get()) };
     }

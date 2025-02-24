@@ -764,7 +764,9 @@ impl<T: Driver> Adapter<T> {
     /// # Safety
     ///
     /// `rdev` must be non-null and valid.
-    unsafe extern "C" fn disable_callback(rdev: *mut bindings::regulator_dev) -> kernel::ffi::c_int {
+    unsafe extern "C" fn disable_callback(
+        rdev: *mut bindings::regulator_dev,
+    ) -> kernel::ffi::c_int {
         // SAFETY: Per this function safety requirements, `rdev` is non-null and valid.
         let mut rdev = unsafe { Device::from_raw(rdev) };
         from_result(|| {

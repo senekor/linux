@@ -27,6 +27,7 @@ pub enum Flags {
     OutHighOpenDrain = bindings::gpiod_flags_GPIOD_OUT_HIGH_OPEN_DRAIN,
 }
 
+/// TODO: document
 pub struct Desc(NonNull<bindings::gpio_desc>);
 
 impl Desc {
@@ -34,6 +35,7 @@ impl Desc {
     ///
     /// See [gpiod_get](`https://docs.kernel.org/driver-api/gpio/index.html#c.gpiod_get`)
     pub fn get(dev: &Device, con_id: &'static CStr, flags: Flags) -> Result<Self> {
+        // SAFETY: TODO
         let desc = from_err_ptr(unsafe {
             bindings::gpiod_get(dev.as_raw(), con_id.as_char_ptr(), flags as u32)
         })?;
@@ -45,6 +47,7 @@ impl Desc {
     ///
     /// See [gpiod_get_optional](`https://docs.kernel.org/driver-api/gpio/index.html#c.gpiod_get_optional`)
     pub fn get_optional(dev: &Device, con_id: &'static CStr, flags: Flags) -> Result<Option<Self>> {
+        // SAFETY: TODO
         let desc = from_err_ptr(unsafe {
             bindings::gpiod_get_optional(dev.as_raw(), con_id.as_char_ptr(), flags as u32)
         })?;
@@ -53,6 +56,7 @@ impl Desc {
             return Ok(None);
         }
 
+        // SAFETY: TODO
         Ok(Some(Self(unsafe { NonNull::new_unchecked(desc) })))
     }
 
@@ -77,8 +81,10 @@ impl Desc {
 
 impl Drop for Desc {
     fn drop(&mut self) {
+        // SAFETY: TODO
         unsafe { bindings::gpiod_put(self.0.as_ptr()) }
     }
 }
 
+// SAFETY: TODO
 unsafe impl Send for Desc {}

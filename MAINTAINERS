@@ -11534,6 +11534,7 @@ F:	include/linux/i2c-smbus.h
 F:	include/linux/i2c.h
 F:	include/uapi/linux/i2c-*.h
 F:	include/uapi/linux/i2c.h
+F:	rust/kernel/i2c.rs
 
 I2C SUBSYSTEM HOST DRIVERS
 M:	Andi Shyti <andi.shyti@kernel.org>
@@ -21295,6 +21296,7 @@ T:	git git://git.kernel.org/pub/scm/linux/kernel/git/broonie/regmap.git
 F:	Documentation/devicetree/bindings/regmap/
 F:	drivers/base/regmap/
 F:	include/linux/regmap.h
+F:	rust/kernel/regmap.rs
 
 REMOTE PROCESSOR (REMOTEPROC) SUBSYSTEM
 M:	Bjorn Andersson <andersson@kernel.org>
@@ -26990,6 +26992,8 @@ F:	drivers/regulator/
 F:	rust/kernel/regulator.rs
 F:	include/dt-bindings/regulator/
 F:	include/linux/regulator/
+F:	rust/kernel/regulator.rs
+F:	rust/kernel/regulator/
 K:	regulator_get_optional
 
 VOLTAGE AND CURRENT REGULATOR IRQ HELPERS

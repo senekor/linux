@@ -54,6 +54,7 @@
 #include <linux/firmware.h>
 #include <linux/fs.h>
 #include <linux/gpio/consumer.h>
+#include <linux/i2c.h>
 #include <linux/ioport.h>
 #include <linux/jiffies.h>
 #include <linux/jump_label.h>
@@ -68,7 +69,9 @@
 #include <linux/poll.h>
 #include <linux/property.h>
 #include <linux/refcount.h>
+#include <linux/regmap.h>
 #include <linux/regulator/consumer.h>
+#include <linux/regulator/driver.h>
 #include <linux/sched.h>
 #include <linux/security.h>
 #include <linux/slab.h>

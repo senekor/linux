@@ -147,7 +147,8 @@ impl<T: Driver> Adapter<T> {
         // SAFETY: `remove_callback` is only ever called after a successful call to
         // `probe_callback`, hence it's guaranteed that `ptr` points to a valid and initialized
         // `KBox<T>` pointer created through `KBox::into_foreign`.
-        let _ = unsafe { KBox::<T>::from_foreign(ptr) };
+        // CAST: idk man
+        let _ = unsafe { KBox::<T>::from_foreign(ptr.cast()) };
     }
 }
 
@@ -245,7 +246,7 @@ impl Client {
     pub fn as_raw(&self) -> *mut bindings::i2c_client {
         // SAFETY: By the type invariant `self.0.as_raw` is a pointer to the `struct device`
         // embedded in `struct i2c_client`.
-        unsafe { container_of!(self.0.as_raw(), bindings::i2c_client, dev) }.cast_mut()
+        unsafe { container_of!(self.0.as_raw(), bindings::i2c_client, dev) }.cast()
     }
 }
 

@@ -25,6 +25,9 @@
 
 #include <drm/drm_drv.h>
 #include <drm/drm_managed.h>
+
+#include <soc/bcm2835/raspberrypi-firmware.h>
+
 #include <uapi/drm/v3d_drm.h>
 
 #include "v3d_drv.h"
@@ -146,11 +149,23 @@ v3d_open(struct drm_device *dev, struct drm_file *file)
 static void
 v3d_postclose(struct drm_device *dev, struct drm_file *file)
 {
+	struct v3d_dev *v3d = to_v3d_dev(dev);
 	struct v3d_file_priv *v3d_priv = file->driver_priv;
+	unsigned long irqflags;
 	enum v3d_queue q;
 
-	for (q = 0; q < V3D_MAX_QUEUES; q++)
+	for (q = 0; q < V3D_MAX_QUEUES; q++) {
+		struct v3d_queue_state *queue = &v3d->queue[q];
+		struct v3d_job *job = queue->active_job;
+
 		drm_sched_entity_destroy(&v3d_priv->sched_entity[q]);
+
+		if (job && job->base.entity == &v3d_priv->sched_entity[q]) {
+			spin_lock_irqsave(&queue->queue_lock, irqflags);
+			job->file_priv = NULL;
+			spin_unlock_irqrestore(&queue->queue_lock, irqflags);
+		}
+	}
 
 	v3d_perfmon_close_file(v3d_priv);
 	kfree(v3d_priv);
@@ -303,6 +318,8 @@ map_regs(struct v3d_dev *v3d, void __iomem **regs, const char *name)
 static int v3d_platform_drm_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
+	struct rpi_firmware *firmware;
+	struct device_node *node;
 	struct drm_device *drm;
 	struct v3d_dev *v3d;
 	enum v3d_gen gen;
@@ -388,6 +405,31 @@ static int v3d_platform_drm_probe(struct platform_device *pdev)
 		}
 	}
 
+	node = rpi_firmware_find_node();
+	if (!node) {
+		ret = -EINVAL;
+		goto clk_disable;
+	}
+
+	firmware = rpi_firmware_get(node);
+	of_node_put(node);
+	if (!firmware) {
+		ret = -EPROBE_DEFER;
+		goto clk_disable;
+	}
+
+	v3d->clk_up_rate = rpi_firmware_clk_get_max_rate(firmware,
+							 RPI_FIRMWARE_V3D_CLK_ID);
+	rpi_firmware_put(firmware);
+
+	/* For downclocking, drop it to the minimum frequency we can get from
+	 * the CPRMAN clock generator dividing off our parent.  The divider is
+	 * 4 bits, but ask for just higher than that so that rounding doesn't
+	 * make cprman reject our rate.
+	 */
+	v3d->clk_down_rate =
+		(clk_get_rate(clk_get_parent(v3d->clk)) / (1 << 4)) + 10000;
+
 	if (v3d->ver < V3D_GEN_41) {
 		ret = map_regs(v3d, &v3d->gca_regs, "gca");
 		if (ret)
@@ -417,6 +459,8 @@ static int v3d_platform_drm_probe(struct platform_device *pdev)
 	ret = v3d_sysfs_init(dev);
 	if (ret)
 		goto drm_unregister;
+	ret = clk_set_min_rate(v3d->clk, v3d->clk_down_rate);
+	WARN_ON_ONCE(ret != 0);
 
 	return 0;
 
